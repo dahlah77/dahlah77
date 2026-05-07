@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Portofolio Interaktif | Pondok Pesantren Al-Mursyidul Amin</title>
+  <meta name="description" content="Website portofolio interaktif Pondok Pesantren Al-Mursyidul Amin." />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <canvas id="bgCanvas" aria-hidden="true"></canvas>
+  <div class="orb orb-1" data-speed="0.08"></div>
+  <div class="orb orb-2" data-speed="0.12"></div>
+  <div class="orb orb-3" data-speed="0.05"></div>
+
+  <header class="topbar glass" data-speed="0.03">
+    <div class="brand">
+      <span class="logo">✦</span>
+      <div>
+        <h1>Pondok Pesantren Al-Mursyidul Amin</h1>
+        <p>Membentuk Generasi Qur'ani, Berilmu, dan Berakhlak</p>
+      </div>
+    </div>
+    <nav>
+      <a href="#tentang">Tentang</a>
+      <a href="#program">Program</a>
+      <a href="#prestasi">Prestasi</a>
+      <a href="#kontak">Kontak</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero" id="tentang">
+      <div class="hero-content glass reveal" data-speed="0.07">
+        <p class="tag">PORTOFOLIO DIGITAL</p>
+        <h2>Ruang Belajar Islam Modern Berbasis Nilai Salaf & Teknologi</h2>
+        <p>
+          Menampilkan profil, program unggulan, prestasi santri, dan karya-karya terbaik
+          dalam pengalaman web yang hidup, interaktif, dan elegan.
+        </p>
+        <div class="actions">
+          <a class="liquid-btn" href="#program"><span>Jelajahi Program</span></a>
+          <button id="themeToggle" class="liquid-btn secondary" type="button"><span>Mode Malam</span></button>
+        </div>
+      </div>
+    </section>
+
+    <section class="stats reveal" data-speed="0.05">
+      <article class="card"><h3 data-target="1200">0</h3><p>Santri Aktif</p></article>
+      <article class="card"><h3 data-target="85">0</h3><p>Ustadz/Ustadzah</p></article>
+      <article class="card"><h3 data-target="34">0</h3><p>Program Pembinaan</p></article>
+      <article class="card"><h3 data-target="47">0</h3><p>Prestasi Nasional</p></article>
+    </section>
+
+    <section id="program" class="reveal" data-speed="0.02">
+      <h2 class="section-title">Program Unggulan</h2>
+      <div class="grid programs">
+        <article class="card tilt">
+          <h3>Tahfidz Intensif</h3>
+          <p>Target hafalan terstruktur dengan mentor bersanad dan monitoring digital.</p>
+        </article>
+        <article class="card tilt">
+          <h3>Madrasah Diniyah</h3>
+          <p>Pendalaman kitab kuning, nahwu, sharaf, fiqih, dan adab keseharian.</p>
+        </article>
+        <article class="card tilt">
+          <h3>STEAM & Bahasa</h3>
+          <p>Integrasi sains, teknologi, bahasa Arab-Inggris, dan project kolaboratif.</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="prestasi" class="reveal" data-speed="0.04">
+      <h2 class="section-title">Galeri Prestasi</h2>
+      <div class="timeline glass">
+        <div class="item"><span>2023</span><p>Juara 1 Musabaqah Hifdzil Qur'an Tingkat Provinsi.</p></div>
+        <div class="item"><span>2024</span><p>Top 3 Olimpiade Sains Madrasah Nasional.</p></div>
+        <div class="item"><span>2025</span><p>Penghargaan Pesantren Inovatif Berbasis Digital.</p></div>
+      </div>
+    </section>
+
+    <section id="kontak" class="reveal" data-speed="0.03">
+      <h2 class="section-title">Hubungi Kami</h2>
+      <form class="glass form" onsubmit="event.preventDefault(); alert('Terima kasih! Pesan Anda telah terkirim.');">
+        <input type="text" placeholder="Nama" required>
+        <input type="email" placeholder="Email" required>
+        <textarea rows="4" placeholder="Pesan"></textarea>
+        <button class="liquid-btn" type="submit"><span>Kirim Pesan</span></button>
+      </form>
+    </section>
+  </main>
+
+  <footer>
+    <p>© <span id="year"></span> Pondok Pesantren Al-Mursyidul Amin • Dibuat dengan semangat dakwah digital.</p>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
