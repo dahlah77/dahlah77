@@ -40,7 +40,7 @@ body {
 main, .topbar, footer { width: min(1100px, 92vw); margin-inline: auto; }
 .topbar { margin-top: 16px; display: flex; justify-content: space-between; gap: 18px; align-items: center; padding: 14px 18px; }
 .brand { display:flex; gap: 12px; align-items: center; }
-.logo { font-size: 1.3rem; color: var(--accent); }
+.logo-img { width: 42px; height: 42px; border-radius: 50%; border:1px solid var(--line); background: rgba(255,255,255,.08); padding:4px; }
 .brand h1 { font-size: 1rem; margin: 0; }
 .brand p { margin: 0; color: var(--muted); font-size: .82rem; }
 nav { display:flex; gap: 14px; flex-wrap: wrap; }
@@ -110,3 +110,7 @@ footer { color: var(--muted); text-align: center; padding: 34px 0 20px; }
   .topbar { flex-direction: column; align-items: flex-start; }
   .orb { opacity: .5; }
 }
+
+.gallery img{width:100%;height:200px;object-fit:cover;border-radius:12px;margin-bottom:8px;}
+.gallery figcaption{color:var(--muted);font-size:.9rem;}
+.card ul{margin:.4rem 0 0 1rem;color:var(--muted);line-height:1.7;}
