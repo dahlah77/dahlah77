@@ -1,0 +1,17 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+body{margin:0;font-family:Inter,system-ui,sans-serif;background:#fff;color:#222}
+.ojp{max-width:1100px;margin:0 auto}
+.nav{position:sticky;top:0;z-index:20;display:flex;gap:14px;align-items:center;justify-content:space-between;background:#fff;border-bottom:1px solid #e5e7e2;padding:12px 16px}
+.brand{display:flex;align-items:center;gap:8px}.brand img{width:36px;height:36px;border-radius:10px;background:#fff;padding:3px}
+.menu{display:flex;gap:12px;font-size:14px}.actions{display:flex;gap:8px}
+.primary{background:#89E900;color:#222;border:none;padding:10px 16px;border-radius:999px;font-weight:700}.secondary{background:transparent;color:#222;border:1px solid #222;padding:10px 16px;border-radius:999px}
+.hero{padding:64px 16px}.hero h1{font-size:56px;line-height:1.05;margin:12px 0}.hero p{max-width:740px;color:#4b4b4b}.badge{display:inline-block;background:#222;color:#89E900;padding:8px 14px;border-radius:999px}
+.meta{display:flex;gap:10px;margin-top:16px;color:#5f5f5f}
+.section{padding:56px 16px}.cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.cards article{border:1px solid #e5e7e2;border-radius:14px;padding:16px;background:#fff}
+.dark{background:#222;color:#fff;border-radius:20px}.dark ul{line-height:1.9}
+.footer{background:#222;color:#fff;border-radius:20px 20px 0 0;padding:32px 16px;display:flex;justify-content:space-between}.footer a{display:block;color:#fff;margin:6px 0}.lime{color:#89E900}.logo{width:44px;height:44px;border-radius:10px;background:#fff;padding:4px}
+.parallax{background:linear-gradient(180deg,#fff,#f2fbdd);background-attachment:fixed}
+.parallax-soft{background-image:radial-gradient(circle at 80% 10%,rgba(137,233,0,.2),transparent 40%);background-attachment:fixed}
+@media(max-width:760px){.menu{display:none}.hero h1{font-size:40px}.cards{grid-template-columns:1fr}.footer{flex-direction:column;gap:20px}}
