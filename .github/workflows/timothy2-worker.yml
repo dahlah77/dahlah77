@@ -26,7 +26,7 @@ jobs:
       - name: Download source
         run: |
           mkdir -p work/out
-          gdown --fuzzy "https://drive.google.com/file/d/1_gHGvzOER1E8WcUwn7UfrxwkhXE4autT/view?usp=sharing" -O work/timothy2.mp4
+          gdown "1_gHGvzOER1E8WcUwn7UfrxwkhXE4autT" -O work/timothy2.mp4
           ls -lh work/timothy2.mp4
           ffprobe -v error -show_format -show_streams work/timothy2.mp4 > work/out/meta.txt
 
