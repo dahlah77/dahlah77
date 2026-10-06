@@ -1,0 +1,92 @@
+name: Timothy 2 Worker
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.timothy2/**'
+
+permissions:
+  contents: read
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y ffmpeg
+          python -m pip install --upgrade pip
+          pip install gdown faster-whisper
+
+      - name: Download source
+        run: |
+          mkdir -p work/out
+          gdown --fuzzy "https://drive.google.com/file/d/1_gHGvzOER1E8WcUwn7UfrxwkhXE4autT/view?usp=sharing" -O work/timothy2.mp4
+          ls -lh work/timothy2.mp4
+          ffprobe -v error -show_format -show_streams work/timothy2.mp4 > work/out/meta.txt
+
+      - name: Make lightweight proxy
+        run: |
+          ffmpeg -y -i work/timothy2.mp4 \
+            -vf "scale=-2:270" \
+            -c:v libx264 -preset veryfast -b:v 180k -maxrate 230k -bufsize 460k \
+            -c:a aac -b:a 48k -ac 1 \
+            -movflags +faststart work/out/proxy.mp4
+
+      - name: Transcribe Indonesian
+        run: |
+          cat > work/transcribe.py <<'PY'
+          from faster_whisper import WhisperModel
+          import json
+
+          model = WhisperModel("base", device="cpu", compute_type="int8")
+          segments, info = model.transcribe(
+              "work/timothy2.mp4",
+              language="id",
+              beam_size=3,
+              vad_filter=True,
+              word_timestamps=True,
+          )
+
+          data = {"language": info.language, "language_probability": info.language_probability, "segments": []}
+          srt = []
+          def ts(t):
+              ms = int(round(t * 1000))
+              h, ms = divmod(ms, 3600000)
+              m, ms = divmod(ms, 60000)
+              s, ms = divmod(ms, 1000)
+              return f"{h:02}:{m:02}:{s:02},{ms:03}"
+
+          for i, seg in enumerate(segments, 1):
+              item = {
+                  "id": i,
+                  "start": seg.start,
+                  "end": seg.end,
+                  "text": seg.text.strip(),
+                  "words": [
+                      {"start": w.start, "end": w.end, "word": w.word, "probability": w.probability}
+                      for w in (seg.words or [])
+                  ],
+              }
+              data["segments"].append(item)
+              srt.append(f"{i}\n{ts(seg.start)} --> {ts(seg.end)}\n{seg.text.strip()}\n")
+
+          with open("work/out/transcript.json", "w", encoding="utf-8") as f:
+              json.dump(data, f, ensure_ascii=False, indent=2)
+          with open("work/out/transcript.srt", "w", encoding="utf-8") as f:
+              f.write("\n".join(srt))
+          PY
+          python work/transcribe.py
+
+      - name: Upload analysis package
+        uses: actions/upload-artifact@v4
+        with:
+          name: timothy2-analysis
+          path: work/out/
+          compression-level: 6
+          retention-days: 1
