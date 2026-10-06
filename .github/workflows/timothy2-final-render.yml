@@ -1,0 +1,276 @@
+name: Timothy 2 Final Render
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.timothy2-final/**'
+
+permissions:
+  contents: read
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y ffmpeg fonts-dejavu-core
+          python -m pip install --upgrade pip
+          pip install gdown "faster-whisper==1.2.1" "av<19"
+
+      - name: Download source
+        run: |
+          mkdir -p work/out work/ass
+          gdown "1_gHGvzOER1E8WcUwn7UfrxwkhXE4autT" -O work/timothy2.mp4
+          ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 work/timothy2.mp4
+
+      - name: Transcribe with improved vocabulary
+        run: |
+          cat > work/transcribe.py <<'PY'
+          from faster_whisper import WhisperModel
+          import json
+
+          prompt = """Bahasa Indonesia santai. Topik: waktu, energi, skill stacking, reputasi, kesempatan, uang, optionalitas, investasi, Warren Buffett, Berkshire Hathaway, annual meeting, Elon Musk, sales, marketing, copywriting, media, category of one, adaptif, ownership, networking, value, compound, annual report, startup, fuck-you money."""
+          model = WhisperModel("small", device="cpu", compute_type="int8")
+          segments, info = model.transcribe(
+              "work/timothy2.mp4",
+              language="id",
+              beam_size=5,
+              vad_filter=True,
+              word_timestamps=True,
+              initial_prompt=prompt,
+              condition_on_previous_text=True,
+          )
+          data = {"language": info.language, "language_probability": info.language_probability, "segments": []}
+          for i, seg in enumerate(segments, 1):
+              data["segments"].append({
+                  "id": i,
+                  "start": seg.start,
+                  "end": seg.end,
+                  "text": seg.text.strip(),
+                  "words": [
+                      {"start": w.start, "end": w.end, "word": w.word, "probability": w.probability}
+                      for w in (seg.words or [])
+                  ],
+              })
+          with open("work/transcript.json", "w", encoding="utf-8") as f:
+              json.dump(data, f, ensure_ascii=False, indent=2)
+          PY
+          python work/transcribe.py
+
+      - name: Build subtitles and render clips
+        run: |
+          cat > work/render.py <<'PY'
+          import json, os, re, subprocess, textwrap
+
+          clips = [
+            {"n":1, "start":0.02, "end":91.20, "title":"ASET TERBESAR DI USIA 20–30", "file":"T2_01_ASET_TERBESAR_USIA_20_30.mp4"},
+            {"n":2, "start":91.20, "end":198.90, "title":"WAKTU & ENERGI = MODAL YANG TERBAKAR", "file":"T2_02_WAKTU_ENERGI_MODAL_TERBAKAR.mp4"},
+            {"n":3, "start":199.20, "end":346.36, "title":"GAJI 50 JUTA VS SKILL STACKING", "file":"T2_03_GAJI_50JT_VS_SKILL_STACKING.mp4"},
+            {"n":4, "start":346.36, "end":498.42, "title":"UANG CUMA OUTPUT — MESINNYA ADALAH LO", "file":"T2_04_UANG_CUMA_OUTPUT_MESINNYA_LO.mp4"},
+            {"n":5, "start":498.42, "end":553.02, "title":"SATU SKILL BIKIN KAYA, DUA DUNIA BIKIN BERBAHAYA", "file":"T2_05_DUA_DUNIA_BIKIN_BERBAHAYA.mp4"},
+            {"n":6, "start":553.66, "end":694.04, "title":"RAHASIA WARREN BUFFETT: DUA DUNIA", "file":"T2_06_RAHASIA_WARREN_BUFFETT.mp4"},
+            {"n":7, "start":696.34, "end":803.14, "title":"ELON MUSK & CATEGORY OF ONE", "file":"T2_07_ELON_MUSK_CATEGORY_OF_ONE.mp4"},
+            {"n":8, "start":803.14, "end":864.22, "title":"JANGAN CARI PASSION — BANGUN OTAK ANTI MISKIN", "file":"T2_08_OTAK_ANTI_MISKIN.mp4"},
+            {"n":9, "start":864.22, "end":964.14, "title":"BERUBAH BUKAN PLIN-PLAN, TAPI ADAPTIF", "file":"T2_09_BERUBAH_BUKAN_PLIN_PLAN_TAPI_ADAPTIF.mp4"},
+            {"n":10, "start":971.10, "end":1051.36, "title":"UANG ITU UNTUK OPTIONALITAS", "file":"T2_10_UANG_UNTUK_OPTIONALITAS.mp4"},
+            {"n":11, "start":1051.90, "end":1200.52, "title":"STATUS GAK ADA HABISNYA", "file":"T2_11_STATUS_GAK_ADA_HABISNYA.mp4"},
+            {"n":12, "start":1200.52, "end":1368.30, "title":"4 LEVEL KEKAYAAN", "file":"T2_12_4_LEVEL_KEKAYAAN.mp4"},
+            {"n":13, "start":1368.68, "end":1506.78, "title":"NETWORKING BUKAN KENALAN — TAPI VALUE", "file":"T2_13_NETWORKING_ADALAH_VALUE.mp4"},
+            {"n":14, "start":1507.32, "end":1620.14, "title":"PILIH GAME YANG COMPOUND", "file":"T2_14_PILIH_GAME_YANG_COMPOUND.mp4"},
+            {"n":15, "start":1620.14, "end":1654.92, "title":"1000 KONTEN, 10.000 BARIS, 1000 JAM", "file":"T2_15_1000_KONTEN_10000_BARIS_1000_JAM.mp4"},
+            {"n":16, "start":1655.32, "end":1709.36, "title":"JANGAN BIKIN STARTUP KARENA GENGSI", "file":"T2_16_JANGAN_STARTUP_KARENA_GENGSI.mp4"},
+            {"n":17, "start":1710.02, "end":1757.20, "title":"UANG ITU UNTUK BELI WAKTU", "file":"T2_17_UANG_UNTUK_BELI_WAKTU.mp4"},
+            {"n":18, "start":1757.70, "end":1881.20, "title":"JANGAN PANIK KALAU BELUM KAYA DI 23", "file":"T2_18_JANGAN_PANIK_BELUM_KAYA_UMUR_23.mp4"},
+          ]
+
+          keywords = {
+              "uang","waktu","energi","skill","skills","reputasi","kesempatan","optionalitas","investasi",
+              "warren","buffett","berkshire","elon","musk","sales","marketing","copywriting","media","adaptif",
+              "ownership","networking","value","compound","startup","passion","miskin","kaya","status","mesin",
+              "1000","10.000","10000","beli","bebas","kebebasan","kategori","category"
+          }
+
+          replacements = [
+              (r"\binfestasi\b", "investasi"),
+              (r"\binfasasi\b", "investasi"),
+              (r"\bwarren bafat\b", "Warren Buffett"),
+              (r"\bberkesin\b", "Berkshire"),
+              (r"\boptionalitas\b", "optionalitas"),
+              (r"\bkompaun\b", "compound"),
+              (r"\bonersip\b", "ownership"),
+              (r"\bownersiap\b", "ownership"),
+              (r"\bon-reship\b", "ownership"),
+              (r"\bfakumani\b", "fuck-you money"),
+          ]
+
+          def clean_word(w):
+              w = w.strip()
+              for a,b in replacements:
+                  w = re.sub(a,b,w,flags=re.I)
+              return w
+
+          def ass_escape(s):
+              s = s.replace("\\","\\\\").replace("{","(").replace("}",")")
+              return s
+
+          def fmt(t):
+              if t < 0: t = 0
+              h = int(t//3600); t -= h*3600
+              m = int(t//60); s = t-m*60
+              return f"{h}:{m:02d}:{s:05.2f}"
+
+          def decorate(words):
+              out=[]
+              for w in words:
+                  raw=clean_word(w)
+                  key=re.sub(r"[^0-9A-Za-zÀ-ÿ_-]","",raw).lower()
+                  if key in keywords:
+                      out.append(r"{\c&H00D7FF&}"+ass_escape(raw)+r"{\c&HFFFFFF&}")
+                  else:
+                      out.append(ass_escape(raw))
+              return " ".join(out).upper()
+
+          transcript=json.load(open("work/transcript.json",encoding="utf-8"))
+          all_words=[]
+          for s in transcript["segments"]:
+              for w in s.get("words",[]):
+                  if w.get("start") is not None and w.get("end") is not None:
+                      all_words.append(w)
+
+          os.makedirs("work/out",exist_ok=True)
+          os.makedirs("work/ass",exist_ok=True)
+
+          for clip in clips:
+              words=[w for w in all_words if w["start"] >= clip["start"]-0.08 and w["end"] <= clip["end"]+0.08]
+              groups=[]; cur=[]
+              for w in words:
+                  if not cur:
+                      cur=[w]; continue
+                  gap=(w["start"] or 0)-(cur[-1]["end"] or 0)
+                  dur=(w["end"] or 0)-(cur[0]["start"] or 0)
+                  punct=bool(re.search(r"[.!?]$", cur[-1]["word"].strip()))
+                  if len(cur)>=4 or gap>0.48 or dur>1.75 or (punct and len(cur)>=2):
+                      groups.append(cur); cur=[w]
+                  else:
+                      cur.append(w)
+              if cur: groups.append(cur)
+
+              title=clip["title"]
+              tw=textwrap.wrap(title,width=27)
+              title_text=r"\N".join(ass_escape(x) for x in tw[:2])
+
+              ass_path=f"work/ass/{clip['n']:02d}.ass"
+              with open(ass_path,"w",encoding="utf-8") as f:
+                  f.write("""[Script Info]
+          ScriptType: v4.00+
+          PlayResX: 720
+          PlayResY: 1280
+          WrapStyle: 2
+          ScaledBorderAndShadow: yes
+
+          [V4+ Styles]
+          Format: Name,Fontname,Fontsize,PrimaryColour,SecondaryColour,OutlineColour,BackColour,Bold,Italic,Underline,StrikeOut,ScaleX,ScaleY,Spacing,Angle,BorderStyle,Outline,Shadow,Alignment,MarginL,MarginR,MarginV,Encoding
+          Style: Sub,DejaVu Sans,66,&H00FFFFFF,&H0000D7FF,&H00000000,&H70000000,-1,0,0,0,100,100,0,0,1,5,1,2,48,48,190,1
+          Style: Title,DejaVu Sans,50,&H00FFFFFF,&H0000D7FF,&H00000000,&H88000000,-1,0,0,0,100,100,0,0,3,2,0,8,42,42,76,1
+
+          [Events]
+          Format: Layer,Start,End,Style,Name,MarginL,MarginR,MarginV,Effect,Text
+          """)
+                  f.write(f"Dialogue: 1,{fmt(0)},{fmt(min(2.0,clip['end']-clip['start']))},Title,,0,0,0,,{title_text}\n")
+                  for g in groups:
+                      st=max(0,(g[0]["start"] or clip["start"])-clip["start"])
+                      en=max(st+0.45,(g[-1]["end"] or clip["start"])-clip["start"])
+                      en=min(en,clip["end"]-clip["start"])
+                      txt=decorate([x["word"] for x in g])
+                      f.write(f"Dialogue: 0,{fmt(st)},{fmt(en)},Sub,,0,0,0,,{txt}\n")
+
+              dur=clip["end"]-clip["start"]
+              vf=(
+                  "crop=608:1080:500:0,"
+                  "scale=720:1280:flags=lanczos,"
+                  "zoompan=z='1.012+0.008*sin(on/55)':"
+                  "x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=1:s=720x1280:fps=24,"
+                  f"ass='{ass_path}'"
+              )
+              out=f"work/out/{clip['file']}"
+              cmd=[
+                  "ffmpeg","-y","-hide_banner","-loglevel","warning",
+                  "-ss",f"{clip['start']:.2f}","-i","work/timothy2.mp4","-t",f"{dur:.2f}",
+                  "-vf",vf,
+                  "-c:v","libx264","-preset","medium","-crf","20","-maxrate","4M","-bufsize","8M",
+                  "-pix_fmt","yuv420p","-r","24",
+                  "-c:a","aac","-b:a","128k","-ar","44100",
+                  "-movflags","+faststart",out
+              ]
+              print("Rendering", clip["n"], clip["file"], flush=True)
+              subprocess.run(cmd,check=True)
+
+          with open("work/out/TIMOTHY2_CLIP_MAP.json","w",encoding="utf-8") as f:
+              json.dump(clips,f,ensure_ascii=False,indent=2)
+          PY
+          python work/render.py
+          ls -lh work/out
+
+      - name: Upload clip 01
+        uses: actions/upload-artifact@v4
+        with: {name: t2-01, path: work/out/T2_01_ASET_TERBESAR_USIA_20_30.mp4, compression-level: 0, retention-days: 1}
+      - name: Upload clip 02
+        uses: actions/upload-artifact@v4
+        with: {name: t2-02, path: work/out/T2_02_WAKTU_ENERGI_MODAL_TERBAKAR.mp4, compression-level: 0, retention-days: 1}
+      - name: Upload clip 03
+        uses: actions/upload-artifact@v4
+        with: {name: t2-03, path: work/out/T2_03_GAJI_50JT_VS_SKILL_STACKING.mp4, compression-level: 0, retention-days: 1}
+      - name: Upload clip 04
+        uses: actions/upload-artifact@v4
+        with: {name: t2-04, path: work/out/T2_04_UANG_CUMA_OUTPUT_MESINNYA_LO.mp4, compression-level: 0, retention-days: 1}
+      - name: Upload clip 05
+        uses: actions/upload-artifact@v4
+        with: {name: t2-05, path: work/out/T2_05_DUA_DUNIA_BIKIN_BERBAHAYA.mp4, compression-level: 0, retention-days: 1}
+      - name: Upload clip 06
+        uses: actions/upload-artifact@v4
+        with: {name: t2-06, path: work/out/T2_06_RAHASIA_WARREN_BUFFETT.mp4, compression-level: 0, retention-days: 1}
+      - name: Upload clip 07
+        uses: actions/upload-artifact@v4
+        with: {name: t2-07, path: work/out/T2_07_ELON_MUSK_CATEGORY_OF_ONE.mp4, compression-level: 0, retention-days: 1}
+      - name: Upload clip 08
+        uses: actions/upload-artifact@v4
+        with: {name: t2-08, path: work/out/T2_08_OTAK_ANTI_MISKIN.mp4, compression-level: 0, retention-days: 1}
+      - name: Upload clip 09
+        uses: actions/upload-artifact@v4
+        with: {name: t2-09, path: work/out/T2_09_BERUBAH_BUKAN_PLIN_PLAN_TAPI_ADAPTIF.mp4, compression-level: 0, retention-days: 1}
+      - name: Upload clip 10
+        uses: actions/upload-artifact@v4
+        with: {name: t2-10, path: work/out/T2_10_UANG_UNTUK_OPTIONALITAS.mp4, compression-level: 0, retention-days: 1}
+      - name: Upload clip 11
+        uses: actions/upload-artifact@v4
+        with: {name: t2-11, path: work/out/T2_11_STATUS_GAK_ADA_HABISNYA.mp4, compression-level: 0, retention-days: 1}
+      - name: Upload clip 12
+        uses: actions/upload-artifact@v4
+        with: {name: t2-12, path: work/out/T2_12_4_LEVEL_KEKAYAAN.mp4, compression-level: 0, retention-days: 1}
+      - name: Upload clip 13
+        uses: actions/upload-artifact@v4
+        with: {name: t2-13, path: work/out/T2_13_NETWORKING_ADALAH_VALUE.mp4, compression-level: 0, retention-days: 1}
+      - name: Upload clip 14
+        uses: actions/upload-artifact@v4
+        with: {name: t2-14, path: work/out/T2_14_PILIH_GAME_YANG_COMPOUND.mp4, compression-level: 0, retention-days: 1}
+      - name: Upload clip 15
+        uses: actions/upload-artifact@v4
+        with: {name: t2-15, path: work/out/T2_15_1000_KONTEN_10000_BARIS_1000_JAM.mp4, compression-level: 0, retention-days: 1}
+      - name: Upload clip 16
+        uses: actions/upload-artifact@v4
+        with: {name: t2-16, path: work/out/T2_16_JANGAN_STARTUP_KARENA_GENGSI.mp4, compression-level: 0, retention-days: 1}
+      - name: Upload clip 17
+        uses: actions/upload-artifact@v4
+        with: {name: t2-17, path: work/out/T2_17_UANG_UNTUK_BELI_WAKTU.mp4, compression-level: 0, retention-days: 1}
+      - name: Upload clip 18
+        uses: actions/upload-artifact@v4
+        with: {name: t2-18, path: work/out/T2_18_JANGAN_PANIK_BELUM_KAYA_UMUR_23.mp4, compression-level: 0, retention-days: 1}
+      - name: Upload map
+        uses: actions/upload-artifact@v4
+        with: {name: t2-map, path: work/out/TIMOTHY2_CLIP_MAP.json, retention-days: 1}
