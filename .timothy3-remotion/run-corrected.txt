@@ -1,0 +1,1 @@
+Trigger corrected portrait render for Timothy 3.
