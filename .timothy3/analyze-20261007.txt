@@ -1,0 +1,1 @@
+Trigger Timothy 3 analysis before clipping.
