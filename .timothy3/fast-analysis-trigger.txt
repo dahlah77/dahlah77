@@ -1,0 +1,1 @@
+Trigger fast semantic analysis for Timothy 3.
