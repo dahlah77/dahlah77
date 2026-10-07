@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
   prepare:
@@ -15,43 +16,25 @@ jobs:
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
-      - name: Install analysis tools
+      - name: Install downloader
         run: |
           python -m pip install --upgrade pip
-          pip install gdown "faster-whisper==1.2.1" "av<19"
+          pip install gdown
       - name: Download Timothy 2
         run: |
           mkdir -p input
           gdown "1_gHGvzOER1E8WcUwn7UfrxwkhXE4autT" -O input/timothy2.mp4
-      - name: Transcribe word-level captions
+      - name: Download audited transcript package
+        uses: actions/download-artifact@v4
+        with:
+          name: timothy2-analysis
+          path: audited
+          github-token: ${{ github.token }}
+          repository: dahlah77/dahlah77
+          run-id: 37493180502
+      - name: Copy audited transcript
         run: |
-          cat > transcribe.py <<'PY'
-          from faster_whisper import WhisperModel
-          import json
-          prompt = """Bahasa Indonesia santai. Topik: waktu, energi, skill stacking, reputasi, kesempatan, uang, optionalitas, investasi, Warren Buffett, Berkshire Hathaway, Dale Carnegie, Elon Musk, sales, marketing, copywriting, media, category of one, adaptif, ownership, networking, value, compound, startup, passion, fuck-you money."""
-          model = WhisperModel("small", device="cpu", compute_type="int8")
-          segments, info = model.transcribe(
-              "input/timothy2.mp4",
-              language="id",
-              beam_size=5,
-              vad_filter=True,
-              word_timestamps=True,
-              initial_prompt=prompt,
-              condition_on_previous_text=True,
-          )
-          data={"language":info.language,"segments":[]}
-          for i,s in enumerate(segments,1):
-              data["segments"].append({
-                  "id":i,"start":s.start,"end":s.end,"text":s.text.strip(),
-                  "words":[
-                      {"start":w.start,"end":w.end,"word":w.word,"probability":w.probability}
-                      for w in (s.words or [])
-                  ],
-              })
-          with open("input/transcript.json","w",encoding="utf-8") as f:
-              json.dump(data,f,ensure_ascii=False)
-          PY
-          python transcribe.py
+          cp audited/transcript.json input/transcript.json
       - name: Upload Remotion input
         uses: actions/upload-artifact@v4
         with:
