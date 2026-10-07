@@ -230,7 +230,7 @@ jobs:
                     position:"absolute",
                     width:2276,
                     height:1280,
-                    left:-778,
+                    left:clip.id===13?-600:-778,
                     top:0,
                     objectFit:"fill",
                     scale:zoom,
