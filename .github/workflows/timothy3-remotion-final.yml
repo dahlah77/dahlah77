@@ -133,41 +133,45 @@ jobs:
           import transcript from "./transcript.json";
           import {clips} from "./clips.js";
 
-          const replacements = [
-            [/\bborang bitcoin\b/gi,"Borong Bitcoin"],
-            [/\bboron bikur\b/gi,"Borong Bitcoin"],
-            [/\bborong bitcoin\b/gi,"Borong Bitcoin"],
-            [/\bblackrock\b/gi,"BlackRock"],
-            [/\bgoldman sachs\b/gi,"Goldman Sachs"],
-            [/\bjp morgan\b/gi,"JP Morgan"],
-            [/\bfranklin temple\b/gi,"Franklin Templeton"],
-            [/\bfederal reserve\b/gi,"Federal Reserve"],
-            [/\bdofish\b/gi,"dovish"],
-            [/\bshorting\b/gi,"shorting"],
-            [/\bshort squeeze\b/gi,"short squeeze"],
-            [/\bliquidasi\b/gi,"likuidasi"],
-            [/\bliquiditas\b/gi,"likuiditas"],
-            [/\bforge flow\b/gi,"forced flow"],
-            [/\bself-casted\b/gi,"self-custody"],
-            [/\bcold wallet\b/gi,"cold wallet"],
-            [/\bpublic dan private key\b/gi,"public dan private key"],
-            [/\biBit\b/gi,"IBIT"],
-            [/\bfbtc\b/gi,"FBTC"],
-            [/\bfidelity\b/gi,"Fidelity"],
-            [/\barbitrasa\b/gi,"arbitrase"],
-            [/\bus treasury\b/gi,"US Treasury"],
-            [/\bliquidity clock\b/gi,"Liquidity Clock"],
-            [/\badopsi clock\b/gi,"Adoption Clock"],
-            [/\bmakroekonomis\b/gi,"makroekonomi"],
-            [/\bmikroekonomis\b/gi,"mikroekonomi"],
-            [/\bdollar cost average\b/gi,"dollar cost averaging"],
-            [/\bkeraion\b/gi,"krayon"]
-          ];
+          const tokenMap = {
+            "borang":"Borong",
+            "boron":"Borong",
+            "bikur":"Bitcoin",
+            "blackrock":"BlackRock",
+            "goldman":"Goldman",
+            "sachs":"Sachs",
+            "morgan":"Morgan",
+            "temple":"Templeton",
+            "dofish":"dovish",
+            "liquidasi":"likuidasi",
+            "liquiditas":"likuiditas",
+            "forge":"forced",
+            "self-casted":"self-custody",
+            "ibit":"IBIT",
+            "fbtc":"FBTC",
+            "fidelity":"Fidelity",
+            "arbitrasa":"arbitrase",
+            "makroekonomis":"makroekonomi",
+            "mikroekonomis":"mikroekonomi",
+            "keraion":"krayon",
+            "dekadah":"dekade",
+            "cyberpunk":"cypherpunk",
+            "accessnya":"aksesnya",
+            "indexan":"indeks",
+            "monitor":"moneter",
+            "glombang":"gelombang",
+            "bujar":"buyar",
+            "kalinya":"kalian",
+            "maun":"mau",
+            "world":"wealth",
+            "little":"retail"
+          };
 
           const cleanText=(raw)=>{
-            let s=raw;
-            for(const [a,b] of replacements) s=s.replace(a,b);
-            return s;
+            const match=raw.match(/^([^A-Za-zÀ-ÿ0-9-]*)(.*?)([^A-Za-zÀ-ÿ0-9-]*)$/);
+            if(!match) return raw;
+            const key=match[2].toLowerCase();
+            return match[1]+(tokenMap[key]??match[2])+match[3];
           };
 
           const allWords=transcript.segments.flatMap((s)=>
