@@ -1,0 +1,296 @@
+name: Timothy 2 Remotion Final
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.timothy2-remotion/**'
+
+permissions:
+  contents: read
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install analysis tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install gdown "faster-whisper==1.2.1" "av<19"
+      - name: Download Timothy 2
+        run: |
+          mkdir -p input
+          gdown "1_gHGvzOER1E8WcUwn7UfrxwkhXE4autT" -O input/timothy2.mp4
+      - name: Transcribe word-level captions
+        run: |
+          cat > transcribe.py <<'PY'
+          from faster_whisper import WhisperModel
+          import json
+          prompt = """Bahasa Indonesia santai. Topik: waktu, energi, skill stacking, reputasi, kesempatan, uang, optionalitas, investasi, Warren Buffett, Berkshire Hathaway, Dale Carnegie, Elon Musk, sales, marketing, copywriting, media, category of one, adaptif, ownership, networking, value, compound, startup, passion, fuck-you money."""
+          model = WhisperModel("small", device="cpu", compute_type="int8")
+          segments, info = model.transcribe(
+              "input/timothy2.mp4",
+              language="id",
+              beam_size=5,
+              vad_filter=True,
+              word_timestamps=True,
+              initial_prompt=prompt,
+              condition_on_previous_text=True,
+          )
+          data={"language":info.language,"segments":[]}
+          for i,s in enumerate(segments,1):
+              data["segments"].append({
+                  "id":i,"start":s.start,"end":s.end,"text":s.text.strip(),
+                  "words":[
+                      {"start":w.start,"end":w.end,"word":w.word,"probability":w.probability}
+                      for w in (s.words or [])
+                  ],
+              })
+          with open("input/transcript.json","w",encoding="utf-8") as f:
+              json.dump(data,f,ensure_ascii=False)
+          PY
+          python transcribe.py
+      - name: Upload Remotion input
+        uses: actions/upload-artifact@v4
+        with:
+          name: timothy2-remotion-input
+          path: input/
+          compression-level: 0
+          retention-days: 1
+
+  render:
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        group: [0,1,2,3,4,5]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install fonts
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y fonts-dejavu-core
+      - name: Download video and transcript
+        uses: actions/download-artifact@v4
+        with:
+          name: timothy2-remotion-input
+          path: input
+      - name: Create Remotion project
+        run: |
+          mkdir -p remotion/src remotion/public remotion/out
+          cp input/timothy2.mp4 remotion/public/timothy2.mp4
+          cp input/transcript.json remotion/src/transcript.json
+          cd remotion
+          cat > package.json <<'EOF'
+          {
+            "private": true,
+            "type": "module",
+            "scripts": {"render":"remotion render"},
+            "dependencies": {
+              "remotion": "4.0.530",
+              "@remotion/cli": "4.0.530",
+              "@remotion/media": "4.0.530",
+              "react": "19.1.0",
+              "react-dom": "19.1.0"
+            }
+          }
+          EOF
+          npm install --no-audit --no-fund
+          cat > src/clips.js <<'EOF'
+          export const clips = [
+            {id:1,start:0.02,end:90.90,title:"ASET TERBESAR UMUR 20–30 BUKAN UANG"},
+            {id:2,start:91.12,end:199.10,title:"WAKTU & ENERGI LU SEDANG TERBAKAR"},
+            {id:3,start:199.24,end:343.10,title:"GAJI 50 JUTA VS SKILL STACKING"},
+            {id:4,start:343.26,end:498.50,title:"UANG CUMA OUTPUT — MESINNYA ADALAH LU"},
+            {id:5,start:498.64,end:553.10,title:"SATU SKILL BIKIN KAYA, DUA DUNIA BIKIN BERBAHAYA"},
+            {id:6,start:553.52,end:694.20,title:"RAHASIA WARREN BUFFETT YANG JARANG DIBAHAS"},
+            {id:7,start:694.46,end:803.30,title:"ELON MUSK & CATEGORY OF ONE"},
+            {id:8,start:803.48,end:864.00,title:"JANGAN CARI PASSION — BANGUN OTAK ANTI MISKIN"},
+            {id:9,start:864.22,end:964.05,title:"BERUBAH BUKAN PLIN-PLAN, TAPI ADAPTIF"},
+            {id:10,start:964.14,end:1051.45,title:"UANG SEHARUSNYA MEMBELI OPTIONALITAS"},
+            {id:11,start:1052.00,end:1200.30,title:"STATUS GAK ADA HABISNYA — CARI F*CK-YOU MONEY"},
+            {id:12,start:1200.46,end:1368.35,title:"4 LEVEL KEKAYAAN"},
+            {id:13,start:1368.68,end:1506.90,title:"NETWORKING BUKAN KENALAN — TAPI VALUE"},
+            {id:14,start:1507.28,end:1620.20,title:"PILIH GAME YANG BISA COMPOUND"},
+            {id:15,start:1623.04,end:1655.00,title:"1000 KONTEN, 10.000 BARIS, 1000 JAM"},
+            {id:16,start:1655.32,end:1709.45,title:"JANGAN BIKIN STARTUP KARENA GENGSI"},
+            {id:17,start:1709.94,end:1757.30,title:"UANG ITU UNTUK BELI WAKTU"},
+            {id:18,start:1757.76,end:1881.20,title:"BELUM KAYA DI 23? JANGAN PANIK"}
+          ];
+          EOF
+          cat > src/TimothyClip.jsx <<'EOF'
+          import React, {useMemo} from "react";
+          import {AbsoluteFill, interpolate, spring, staticFile, useCurrentFrame, useVideoConfig} from "remotion";
+          import {Video} from "@remotion/media";
+          import transcript from "./transcript.json";
+          import {clips} from "./clips.js";
+
+          const replacements = [
+            [/\binfasasi\b/gi,"investasi"],[/\binfestasi\b/gi,"investasi"],
+            [/\bwarren bafat\b/gi,"Warren Buffett"],[/\bwarren buffat\b/gi,"Warren Buffett"],
+            [/\bberkesan\b/gi,"Berkshire"],[/\bberkesir\b/gi,"Berkshire"],
+            [/\bonersip\b/gi,"ownership"],[/\bownersiap\b/gi,"ownership"],
+            [/\bfakumani\b/gi,"fuck-you money"],[/\bfakyu mani\b/gi,"fuck-you money"],
+            [/\bpesian\b/gi,"passion"],[/\bkonsolting\b/gi,"consulting"],
+            [/\bkopi writing\b/gi,"copywriting"],[/\bslopenya\b/gi,"slope-nya"],
+            [/\bal-kami\b/gi,"alchemy"],[/\bopsionalitas\b/gi,"optionalitas"]
+          ];
+
+          const clean = (raw) => {
+            let s = raw;
+            for (const [a,b] of replacements) s=s.replace(a,b);
+            return s;
+          };
+
+          const allWords = transcript.segments.flatMap((s) =>
+            (s.words || []).filter((w) => w.start != null && w.end != null)
+              .map((w) => ({...w, word: clean(w.word.trim())}))
+          );
+
+          const buildPages = (clip) => {
+            const ws = allWords.filter((w) => w.start >= clip.start - 0.08 && w.end <= clip.end + 0.08);
+            const pages=[]; let cur=[];
+            for (const w of ws) {
+              if (cur.length===0){cur=[w]; continue;}
+              const gap=w.start-cur[cur.length-1].end;
+              const dur=w.end-cur[0].start;
+              const punct=/[.!?]$/.test(cur[cur.length-1].word);
+              if (cur.length>=5 || gap>0.42 || dur>1.85 || (punct && cur.length>=3)) {
+                pages.push(cur); cur=[w];
+              } else cur.push(w);
+            }
+            if (cur.length) pages.push(cur);
+            return pages;
+          };
+
+          const keyWords = new Set([
+            "uang","waktu","energi","skill","reputasi","kesempatan","optionalitas","investasi",
+            "warren","buffett","berkshire","elon","musk","sales","marketing","copywriting","media",
+            "adaptif","ownership","networking","value","compound","startup","passion","miskin","kaya",
+            "status","mesin","1000","10.000","beli","bebas","kebebasan","kategori","category"
+          ]);
+
+          export const TimothyClip = ({clipId}) => {
+            const clip=clips.find((c)=>c.id===clipId) || clips[0];
+            const frame=useCurrentFrame();
+            const {fps,durationInFrames}=useVideoConfig();
+            const absoluteTime=clip.start + frame/fps;
+            const pages=useMemo(()=>buildPages(clip),[clip.id]);
+            const page=pages.find((p)=>absoluteTime>=p[0].start-0.05 && absoluteTime<=p[p.length-1].end+0.10);
+
+            const titleSpring=spring({fps,frame,config:{damping:18,stiffness:180,mass:0.8}});
+            const titleOpacity=interpolate(frame,[0,6,48,60],[0,1,1,0],{extrapolateLeft:"clamp",extrapolateRight:"clamp"});
+            const zoom=1.012 + Math.sin(frame/52)*0.008;
+            const progress=Math.min(1,Math.max(0,frame/Math.max(1,durationInFrames-1)));
+
+            return (
+              <AbsoluteFill style={{backgroundColor:"#000",fontFamily:"DejaVu Sans, Arial, sans-serif",overflow:"hidden"}}>
+                <Video
+                  name="Timothy 2 source"
+                  src={staticFile("timothy2.mp4")}
+                  trimBefore={Math.round(clip.start*fps)}
+                  trimAfter={Math.round(clip.end*fps)}
+                  durationInFrames={Math.ceil((clip.end-clip.start)*fps)}
+                  style={{
+                    position:"absolute",width:2276,height:1280,left:-593,top:0,
+                    objectFit:"cover",scale:zoom,filter:"contrast(1.035) saturate(1.025)"
+                  }}
+                />
+                <AbsoluteFill style={{background:"linear-gradient(to bottom, rgba(0,0,0,.22) 0%, rgba(0,0,0,0) 30%, rgba(0,0,0,0) 58%, rgba(0,0,0,.44) 100%)"}} />
+
+                <div style={{
+                  position:"absolute",top:58,left:54,right:54,display:"flex",justifyContent:"center",
+                  opacity:titleOpacity,scale:0.92+titleSpring*0.08
+                }}>
+                  <div style={{
+                    maxWidth:610,padding:"16px 22px",borderRadius:18,background:"rgba(0,0,0,.72)",
+                    border:"1px solid rgba(255,255,255,.12)",boxShadow:"0 12px 30px rgba(0,0,0,.30)",
+                    color:"white",fontWeight:900,fontSize:40,lineHeight:1.08,textAlign:"center",
+                    textTransform:"uppercase",letterSpacing:-0.8
+                  }}>{clip.title}</div>
+                </div>
+
+                {page ? (
+                  <div style={{
+                    position:"absolute",left:44,right:44,bottom:170,textAlign:"center",
+                    fontSize:56,lineHeight:1.12,fontWeight:900,letterSpacing:-1.2,
+                    textTransform:"uppercase",filter:"drop-shadow(0 4px 6px rgba(0,0,0,.65))"
+                  }}>
+                    {page.map((w,i)=>{
+                      const active=absoluteTime>=w.start && absoluteTime<=w.end+0.04;
+                      const normalized=w.word.replace(/[^0-9A-Za-zÀ-ÿ.-]/g,"").toLowerCase();
+                      const emphasized=keyWords.has(normalized);
+                      return <span key={i} style={{
+                        color:active?"#FFD400":(emphasized?"#FFF2A8":"#FFFFFF"),
+                        WebkitTextStroke:"2.5px rgba(0,0,0,.92)",
+                        marginRight:12,display:"inline-block",
+                        scale:active?1.08:1
+                      }}>{w.word}</span>;
+                    })}
+                  </div>
+                ):null}
+
+                <div style={{position:"absolute",left:36,right:36,bottom:54,height:5,borderRadius:10,background:"rgba(255,255,255,.18)",overflow:"hidden"}}>
+                  <div style={{height:"100%",width:(progress*100)+"%",background:"#FFD400",borderRadius:10}} />
+                </div>
+              </AbsoluteFill>
+            );
+          };
+          EOF
+          cat > src/Root.jsx <<'EOF'
+          import React from "react";
+          import {Composition} from "remotion";
+          import {TimothyClip} from "./TimothyClip.jsx";
+          import {clips} from "./clips.js";
+
+          export const RemotionRoot = () => (
+            <Composition
+              id="TimothyClip"
+              component={TimothyClip}
+              width={720}
+              height={1280}
+              fps={24}
+              durationInFrames={Math.ceil((clips[0].end-clips[0].start)*24)}
+              defaultProps={{clipId:1}}
+              calculateMetadata={({props})=>{
+                const clip=clips.find((c)=>c.id===props.clipId) || clips[0];
+                return {
+                  durationInFrames:Math.ceil((clip.end-clip.start)*24),
+                  defaultOutName:"T2_"+String(clip.id).padStart(2,"0")+".mp4"
+                };
+              }}
+            />
+          );
+          EOF
+          cat > src/index.jsx <<'EOF'
+          import {registerRoot} from "remotion";
+          import {RemotionRoot} from "./Root.jsx";
+          registerRoot(RemotionRoot);
+          EOF
+          npx remotion browser ensure
+      - name: Render assigned clips with Remotion
+        env:
+          GROUP: ${{ matrix.group }}
+        run: |
+          cd remotion
+          START=$((GROUP*3+1))
+          END=$((START+2))
+          for ID in $(seq $START $END); do
+            PAD=$(printf "%02d" "$ID")
+            echo "Rendering clip $PAD with Remotion"
+            npx remotion render src/index.jsx TimothyClip "out/T2_${PAD}.mp4"               --props="{\"clipId\":$ID}"               --codec=h264 --crf=18 --pixel-format=yuv420p --concurrency=2
+          done
+      - name: Upload rendered group
+        uses: actions/upload-artifact@v4
+        with:
+          name: timothy2-remotion-group-${{ matrix.group }}
+          path: remotion/out/*.mp4
+          compression-level: 0
+          retention-days: 1
