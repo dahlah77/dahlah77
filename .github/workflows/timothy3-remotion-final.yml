@@ -1,12 +1,6 @@
 name: Timothy 3 Remotion Final
 
 on:
-  push:
-    branches:
-      - 'timothy3-remotion-*'
-    paths:
-      - '.timothy3-remotion/**'
-      - '.github/workflows/timothy3-remotion-final.yml'
   pull_request:
     branches: [main]
     paths:
@@ -17,75 +11,40 @@ permissions:
   actions: read
 
 jobs:
-  prepare:
-    runs-on: ubuntu-latest
-    timeout-minutes: 60
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install downloader
-        run: |
-          python -m pip install --upgrade pip
-          pip install gdown
-
-      - name: Download Timothy 3
-        run: |
-          mkdir -p input
-          gdown "1FYGqHgVclstPK2DHM86KqeTVlW1MNNFf" -O input/timothy3.mp4
-
-      - name: Download audited transcript
-        uses: actions/download-artifact@v4
-        with:
-          name: timothy3-analysis
-          path: audited
-          github-token: ${{ github.token }}
-          repository: dahlah77/dahlah77
-          run-id: 37588457963
-
-      - name: Prepare Remotion input
-        run: |
-          cp audited/transcript.json input/transcript.json
-          test -s input/timothy3.mp4
-          test -s input/transcript.json
-
-      - name: Upload Remotion input
-        uses: actions/upload-artifact@v4
-        with:
-          name: timothy3-remotion-input
-          path: input/
-          compression-level: 0
-          retention-days: 1
-
   render:
-    needs: prepare
     runs-on: ubuntu-latest
     timeout-minutes: 90
     strategy:
       fail-fast: false
       matrix:
         group: [0,1,2,3,4]
+
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
 
-      - name: Install fonts
+      - name: Install tools
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y fonts-dejavu-core ffmpeg
+          sudo apt-get install -y ffmpeg fonts-dejavu-core
+          python -m pip install --upgrade pip
+          pip install gdown
 
-      - name: Download source and transcript
-        uses: actions/download-artifact@v4
-        with:
-          name: timothy3-remotion-input
-          path: input
+      - name: Download source and audited transcript
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p remotion/public remotion/src remotion/out analysis
+          gdown "1FYGqHgVclstPK2DHM86KqeTVlW1MNNFf" -O remotion/public/timothy3.mp4
+          gh api /repos/${GITHUB_REPOSITORY}/actions/artifacts/11468006354/zip > analysis.zip
+          unzip -o analysis.zip transcript.json -d analysis
+          cp analysis/transcript.json remotion/src/transcript.json
 
       - name: Create Remotion project
+        working-directory: remotion
         run: |
-          mkdir -p remotion/src remotion/public remotion/out
-          cp input/timothy3.mp4 remotion/public/timothy3.mp4
-          cp input/transcript.json remotion/src/transcript.json
-          cd remotion
           cat > package.json <<'EOF'
           {
             "private": true,
@@ -103,192 +62,148 @@ jobs:
 
           cat > src/clips.js <<'EOF'
           export const clips = [
-            {id:1,start:11.18,end:77.18,title:"STOP NANYA: SEKARANG WAKTU BELI?",file:"T3_01_STOP_NANYA_WAKTU_BELI.mp4"},
-            {id:2,start:77.18,end:118.86,title:"BITCOIN SUDAH BEDA DARI DULU",file:"T3_02_BITCOIN_SUDAH_BEDA.mp4"},
-            {id:3,start:118.86,end:155.50,title:"YANG GERAKIN BITCOIN BUKAN CUMA CHART",file:"T3_03_LIKUIDITAS_MAKRO_GERAKIN_BITCOIN.mp4"},
-            {id:4,start:155.50,end:222.08,title:"HARGA NAIK BISA KARENA SHORT SQUEEZE",file:"T3_04_SHORT_SQUEEZE_FORCED_FLOW.mp4"},
-            {id:5,start:222.08,end:266.44,title:"ETF MENGUBAH ARUS UANG KE BITCOIN",file:"T3_05_ETF_UBAH_FLOW_INSTITUSI.mp4"},
-            {id:6,start:268.04,end:313.04,title:"MARKET SUDAH HARGAIN EKSPEKTASI LU",file:"T3_06_MARKET_EFISIEN_ARBITRASE.mp4"},
-            {id:7,start:314.52,end:361.58,title:"CRYPTO BUKAN PLANET SENDIRI",file:"T3_07_CRYPTO_BUKAN_PLANET_SENDIRI.mp4"},
-            {id:8,start:361.58,end:432.24,title:"2 FRAMEWORK ANALISA BITCOIN",file:"T3_08_LIQUIDITY_CLOCK_ADOPTION_CLOCK.mp4"},
-            {id:9,start:446.92,end:482.82,title:"RETAIL TERLALU MAU TIMING TOP & BOTTOM",file:"T3_09_RETAIL_TIMING_TOP_BOTTOM.mp4"},
-            {id:10,start:482.82,end:527.16,title:"JANGAN TARUH UANG YANG LU BUTUH",file:"T3_10_POSITION_SIZING_EMOSI.mp4"},
-            {id:11,start:527.16,end:576.38,title:"DCA BUAT MATIIN EMOSI",file:"T3_11_DCA_LIQUIDITY_CLOCK.mp4"},
-            {id:12,start:576.92,end:621.32,title:"HARGA TURUN BUKAN BERARTI TESIS BERUBAH",file:"T3_12_HARGA_VS_TESIS_SURVIVAL.mp4"},
-            {id:13,start:622.80,end:695.74,title:"BORONG BITCOIN 100 JUTA — HASIL 42 BULAN",file:"T3_13_BORONG_100JT_HASIL_42_BULAN.mp4"}
+            {id:1,start:0.00,end:77.18,title:"BITCOIN 83K? BERHENTI NEBAK HARGA BESOK",file:"T3_01_BTC_83K_JANGAN_NEBAK_HARGA.mp4"},
+            {id:2,start:77.18,end:118.86,title:"DEMAND BITCOIN SUDAH BERUBAH",file:"T3_02_ADOPSI_INSTITUSI_UBAH_DEMAND.mp4"},
+            {id:3,start:118.86,end:155.50,title:"SWING BITCOIN DITENTUKAN LIKUIDITAS MAKRO",file:"T3_03_LIKUIDITAS_MAKRO_TENTUKAN_SWING.mp4"},
+            {id:4,start:155.50,end:211.82,title:"SHORT SQUEEZE: KENAPA HARGA BISA MELEDAK",file:"T3_04_SHORT_SQUEEZE_FORCED_FLOW.mp4"},
+            {id:5,start:211.82,end:268.04,title:"ETF MENGUBAH AKSES UANG BESAR KE BITCOIN",file:"T3_05_ETF_UBAH_AKSES_INSTITUSI.mp4"},
+            {id:6,start:268.04,end:313.04,title:"KENAPA MARKET CEPAT JADI EFISIEN",file:"T3_06_MARKET_EFISIEN_ARBITRASE.mp4"},
+            {id:7,start:313.04,end:363.68,title:"CRYPTO BUKAN PLANET SENDIRI",file:"T3_07_TREASURY_CRYPTO_BUKAN_PLANET_SENDIRI.mp4"},
+            {id:8,start:363.68,end:434.06,title:"2 FRAMEWORK TIMOTHY BUAT ANALISA BITCOIN",file:"T3_08_LIQUIDITY_CLOCK_ADOPTION_CLOCK.mp4"},
+            {id:9,start:448.48,end:484.98,title:"RETAIL JANGAN SOK TIMING TOP & BOTTOM",file:"T3_09_RETAIL_JANGAN_SOK_TIMING.mp4"},
+            {id:10,start:484.98,end:528.78,title:"TARUH UANG YANG SIAP HILANG",file:"T3_10_POSITION_SIZING_SIAP_HILANG.mp4"},
+            {id:11,start:528.78,end:576.92,title:"DCA UNTUK MEMBUNUH EMOSI",file:"T3_11_DCA_ELIMINASI_EMOSI.mp4"},
+            {id:12,start:576.92,end:622.80,title:"HARGA TURUN BUKAN BERARTI TESIS BERUBAH",file:"T3_12_HARGA_VS_TESIS_SURVIVAL.mp4"},
+            {id:13,start:622.80,end:695.74,title:"42 BULAN: DARI 100 JUTA KE PORTOFOLIO MILIARAN",file:"T3_13_BUKTI_EKSEKUSI_PORTOFOLIO.mp4"}
           ];
           EOF
 
           cat > src/TimothyClip.jsx <<'EOF'
           import React, {useMemo} from "react";
-          import {
-            AbsoluteFill,
-            interpolate,
-            spring,
-            staticFile,
-            useCurrentFrame,
-            useVideoConfig
-          } from "remotion";
+          import {AbsoluteFill, interpolate, spring, staticFile, useCurrentFrame, useVideoConfig} from "remotion";
           import {Video} from "@remotion/media";
           import transcript from "./transcript.json";
           import {clips} from "./clips.js";
 
-          const tokenMap = {
-            "borang":"Borong",
-            "boron":"Borong",
-            "bikur":"Bitcoin",
-            "blackrock":"BlackRock",
-            "goldman":"Goldman",
-            "sachs":"Sachs",
-            "morgan":"Morgan",
-            "temple":"Templeton",
-            "dofish":"dovish",
-            "liquidasi":"likuidasi",
-            "liquiditas":"likuiditas",
-            "forge":"forced",
-            "self-casted":"self-custody",
-            "ibit":"IBIT",
-            "fbtc":"FBTC",
-            "fidelity":"Fidelity",
-            "arbitrasa":"arbitrase",
-            "makroekonomis":"makroekonomi",
-            "mikroekonomis":"mikroekonomi",
-            "keraion":"krayon",
-            "dekadah":"dekade",
-            "cyberpunk":"cypherpunk",
-            "accessnya":"aksesnya",
-            "indexan":"indeks",
-            "monitor":"moneter",
-            "glombang":"gelombang",
-            "bujar":"buyar",
-            "kalinya":"kalian",
-            "maun":"mau",
-            "world":"wealth",
-            "little":"retail"
+          const replacements = [
+            [/\bblack rock\b/gi,"BlackRock"],
+            [/\bjp morgan\b/gi,"JPMorgan"],
+            [/\bgoldman sax\b/gi,"Goldman Sachs"],
+            [/\bfranklin temple\b/gi,"Franklin Templeton"],
+            [/\bfederal reserve\b/gi,"Federal Reserve"],
+            [/\bliquiditas\b/gi,"likuiditas"],
+            [/\bdofish\b/gi,"dovish"],
+            [/\bforge flow\b/gi,"forced flow"],
+            [/\bshorting\b/gi,"shorting"],
+            [/\bshort squeeze\b/gi,"short squeeze"],
+            [/\bdollar cost average\b/gi,"dollar cost averaging"],
+            [/\bus treasury\b/gi,"US Treasury"],
+            [/\bpublic dan private key\b/gi,"public & private key"],
+            [/\bcold wallet\b/gi,"cold wallet"],
+            [/\binteractive broker\b/gi,"Interactive Brokers"],
+            [/\bbitcoin\b/gi,"Bitcoin"]
+          ];
+
+          const cleanWord = (word) => {
+            let s = word;
+            for (const [a,b] of replacements) s=s.replace(a,b);
+            return s;
           };
 
-          const cleanText=(raw)=>{
-            const match=raw.match(/^([^A-Za-zÀ-ÿ0-9-]*)(.*?)([^A-Za-zÀ-ÿ0-9-]*)$/);
-            if(!match) return raw;
-            const key=match[2].toLowerCase();
-            return match[1]+(tokenMap[key]??match[2])+match[3];
-          };
-
-          const allWords=transcript.segments.flatMap((s)=>
-            (s.words||[])
-              .filter((w)=>w.start!=null&&w.end!=null)
-              .map((w)=>({...w,word:cleanText(w.word.trim())}))
+          const words = transcript.segments.flatMap((s)=>
+            (s.words || [])
+              .filter((w)=>w.start != null && w.end != null)
+              .map((w)=>({...w,word:cleanWord((w.word || "").trim())}))
           );
 
-          const makePages=(clip)=>{
-            const ws=allWords.filter((w)=>w.start>=clip.start-0.10&&w.end<=clip.end+0.10);
+          const keywords = new Set([
+            "bitcoin","likuiditas","makro","institusi","blackrock","jpmorgan","goldman","sachs","etf",
+            "short","squeeze","forced","flow","treasury","federal","reserve","arbitrase","dca",
+            "tesis","survival","emosi","investor","adopsi","demand","rate","rates","risiko","portfolio",
+            "portofolio","miliar","juta","100"
+          ]);
+
+          const normalize=(s)=>s.toLowerCase().replace(/[^0-9a-zà-ÿ-]/gi,"");
+
+          const buildPages=(clip)=>{
+            const ws=words.filter((w)=>w.start>=clip.start-0.08 && w.end<=clip.end+0.08);
             const pages=[]; let cur=[];
             for(const w of ws){
               if(cur.length===0){cur=[w];continue;}
               const gap=w.start-cur[cur.length-1].end;
               const dur=w.end-cur[0].start;
               const punct=/[.!?]$/.test(cur[cur.length-1].word);
-              if(cur.length>=5||gap>0.42||dur>1.85||(punct&&cur.length>=3)){
-                pages.push(cur);cur=[w];
+              if(cur.length>=5 || gap>0.48 || dur>1.9 || (punct && cur.length>=3)){
+                pages.push(cur); cur=[w];
               }else cur.push(w);
             }
             if(cur.length) pages.push(cur);
             return pages;
           };
 
-          const keys=new Set([
-            "bitcoin","uang","investor","institusi","negara","blackrock","goldman","jpmorgan",
-            "likuiditas","makro","inflasi","sukubunga","federal","reserve","yield","unemployment",
-            "short","squeeze","likuidasi","forced","flow","etf","ibit","fbtc","fidelity",
-            "market","efisien","arbitrase","treasury","crypto","framework","adoption","clock",
-            "timing","top","bottom","emosi","dca","tesis","survival","100","juta","miliar"
-          ]);
-
-          const normalize=(s)=>s.toLowerCase().replace(/[^0-9a-zà-ÿ]/gi,"");
-
           export const TimothyClip=({clipId})=>{
             const clip=clips.find((c)=>c.id===clipId)||clips[0];
             const frame=useCurrentFrame();
             const {fps,durationInFrames}=useVideoConfig();
-            const absoluteTime=clip.start+frame/fps;
-            const pages=useMemo(()=>makePages(clip),[clip.id]);
-            const page=pages.find((p)=>absoluteTime>=p[0].start-0.05&&absoluteTime<=p[p.length-1].end+0.10);
-
-            const titleSpring=spring({fps,frame,config:{damping:18,stiffness:180,mass:0.8}});
-            const titleOpacity=interpolate(frame,[0,6,50,62],[0,1,1,0],{
-              extrapolateLeft:"clamp",extrapolateRight:"clamp"
-            });
+            const abs=clip.start+frame/fps;
+            const pages=useMemo(()=>buildPages(clip),[clip.id]);
+            const page=pages.find((p)=>abs>=p[0].start-0.04 && abs<=p[p.length-1].end+0.12);
+            const titleIn=spring({fps,frame,config:{damping:18,stiffness:190,mass:.8}});
+            const titleOpacity=interpolate(frame,[0,6,48,62],[0,1,1,0],{extrapolateLeft:"clamp",extrapolateRight:"clamp"});
+            const zoom=1.016+Math.sin(frame/52)*0.007;
             const progress=Math.min(1,Math.max(0,frame/Math.max(1,durationInFrames-1)));
-            const zoom=1.02+Math.sin(frame/58)*0.007;
 
             return (
-              <AbsoluteFill style={{backgroundColor:"#050505",fontFamily:"DejaVu Sans,Arial,sans-serif",overflow:"hidden"}}>
+              <AbsoluteFill style={{backgroundColor:"#050505",fontFamily:"DejaVu Sans, Arial, sans-serif",overflow:"hidden"}}>
                 <Video
-                  name="Timothy 3 source"
                   src={staticFile("timothy3.mp4")}
                   trimBefore={Math.round(clip.start*fps)}
                   trimAfter={Math.round(clip.end*fps)}
                   durationInFrames={Math.ceil((clip.end-clip.start)*fps)}
-                  volume={1}
                   style={{
-                    position:"absolute",
-                    width:2276,
-                    height:1280,
-                    left:clip.id===13?-600:-778,
-                    top:0,
-                    objectFit:"fill",
-                    scale:zoom,
-                    filter:"contrast(1.04) saturate(1.025)"
+                    position:"absolute",width:"100%",height:"100%",objectFit:"cover",
+                    objectPosition:"40% 50%",transform:`scale(${zoom})`,
+                    filter:"contrast(1.04) saturate(1.03)"
                   }}
                 />
+                <AbsoluteFill style={{background:"linear-gradient(180deg,rgba(0,0,0,.18) 0%,rgba(0,0,0,0) 32%,rgba(0,0,0,0) 58%,rgba(0,0,0,.48) 100%)"}}/>
 
-                <AbsoluteFill style={{
-                  background:"linear-gradient(180deg,rgba(0,0,0,.16) 0%,rgba(0,0,0,0) 32%,rgba(0,0,0,0) 58%,rgba(0,0,0,.52) 100%)"
-                }}/>
-
-                <div style={{
-                  position:"absolute",top:0,left:0,height:5,width:(progress*100)+"%",
-                  background:"#FFD400",boxShadow:"0 0 14px rgba(255,212,0,.35)"
-                }}/>
+                <div style={{position:"absolute",top:0,left:0,height:5,width:(progress*100)+"%",background:"#FFD400"}}/>
 
                 <div style={{
-                  position:"absolute",top:64,left:42,right:42,display:"flex",justifyContent:"center",
-                  opacity:titleOpacity,scale:0.92+titleSpring*0.08
+                  position:"absolute",top:62,left:42,right:42,display:"flex",justifyContent:"center",
+                  opacity:titleOpacity,transform:`scale(${0.94+titleIn*0.06})`
                 }}>
                   <div style={{
-                    maxWidth:620,padding:"15px 20px",borderRadius:18,
-                    background:"rgba(0,0,0,.72)",border:"1px solid rgba(255,255,255,.14)",
-                    color:"#fff",fontWeight:900,fontSize:39,lineHeight:1.08,
-                    textAlign:"center",textTransform:"uppercase",letterSpacing:-0.7,
-                    boxShadow:"0 12px 30px rgba(0,0,0,.30)"
+                    maxWidth:620,padding:"15px 20px",borderRadius:18,background:"rgba(0,0,0,.72)",
+                    border:"1px solid rgba(255,255,255,.13)",boxShadow:"0 10px 28px rgba(0,0,0,.30)",
+                    color:"#fff",fontWeight:950,fontSize:42,lineHeight:1.05,textAlign:"center",
+                    textTransform:"uppercase",letterSpacing:-1
                   }}>{clip.title}</div>
                 </div>
 
-                {page?(
-                  <div style={{
-                    position:"absolute",left:42,right:42,bottom:178,textAlign:"center",
-                    fontSize:55,lineHeight:1.10,fontWeight:900,letterSpacing:-1.1,
-                    textTransform:"uppercase",filter:"drop-shadow(0 4px 7px rgba(0,0,0,.88))"
-                  }}>
-                    {page.map((w,i)=>{
-                      const active=absoluteTime>=w.start&&absoluteTime<=w.end+0.04;
-                      const norm=normalize(w.word);
-                      const emphasized=[...keys].some((k)=>norm.includes(k));
-                      return <span key={i} style={{
-                        color:active?"#FFD400":(emphasized?"#FFF1A0":"#FFFFFF"),
-                        WebkitTextStroke:"2.3px rgba(0,0,0,.95)",
-                        marginRight:11,display:"inline-block",scale:active?1.07:1
-                      }}>{w.word}</span>;
-                    })}
-                  </div>
-                ):null}
+                {page ? <div style={{
+                  position:"absolute",left:44,right:44,bottom:178,textAlign:"center",
+                  fontSize:56,lineHeight:1.1,fontWeight:950,letterSpacing:-1.25,
+                  textTransform:"uppercase",filter:"drop-shadow(0 4px 7px rgba(0,0,0,.8))"
+                }}>
+                  {page.map((w,i)=>{
+                    const active=abs>=w.start && abs<=w.end+0.05;
+                    const key=keywords.has(normalize(w.word));
+                    return <span key={i} style={{
+                      display:"inline-block",marginRight:11,
+                      color:active?"#FFD400":(key?"#FFF0A3":"#FFFFFF"),
+                      WebkitTextStroke:"2.5px rgba(0,0,0,.92)",
+                      transform:active?"scale(1.07)":"scale(1)"
+                    }}>{w.word}</span>
+                  })}
+                </div>:null}
 
                 <div style={{
-                  position:"absolute",left:34,right:34,bottom:52,height:5,
-                  background:"rgba(255,255,255,.18)",borderRadius:10,overflow:"hidden"
-                }}>
-                  <div style={{height:"100%",width:(progress*100)+"%",background:"#FFD400",borderRadius:10}}/>
-                </div>
+                  position:"absolute",right:28,bottom:70,padding:"7px 11px",borderRadius:10,
+                  background:"rgba(0,0,0,.52)",color:"rgba(255,255,255,.75)",
+                  fontSize:18,fontWeight:700,letterSpacing:.5
+                }}>TIMOTHY RONALD</div>
               </AbsoluteFill>
             );
           };
@@ -328,46 +243,43 @@ jobs:
 
           npx remotion browser ensure
 
-      - name: Render assigned clips with Remotion
+      - name: Render assigned clips
+        working-directory: remotion
         env:
           GROUP: ${{ matrix.group }}
         run: |
-          cd remotion
           python - <<'PY'
-          import os,subprocess
-          group=int(os.environ["GROUP"])
-          files=[
-            "T3_01_STOP_NANYA_WAKTU_BELI.mp4",
-            "T3_02_BITCOIN_SUDAH_BEDA.mp4",
-            "T3_03_LIKUIDITAS_MAKRO_GERAKIN_BITCOIN.mp4",
-            "T3_04_SHORT_SQUEEZE_FORCED_FLOW.mp4",
-            "T3_05_ETF_UBAH_FLOW_INSTITUSI.mp4",
-            "T3_06_MARKET_EFISIEN_ARBITRASE.mp4",
-            "T3_07_CRYPTO_BUKAN_PLANET_SENDIRI.mp4",
-            "T3_08_LIQUIDITY_CLOCK_ADOPTION_CLOCK.mp4",
-            "T3_09_RETAIL_TIMING_TOP_BOTTOM.mp4",
-            "T3_10_POSITION_SIZING_EMOSI.mp4",
-            "T3_11_DCA_LIQUIDITY_CLOCK.mp4",
-            "T3_12_HARGA_VS_TESIS_SURVIVAL.mp4",
-            "T3_13_BORONG_100JT_HASIL_42_BULAN.mp4"
+          import os, subprocess, json
+          clips=[
+            (1,"T3_01_BTC_83K_JANGAN_NEBAK_HARGA.mp4"),
+            (2,"T3_02_ADOPSI_INSTITUSI_UBAH_DEMAND.mp4"),
+            (3,"T3_03_LIKUIDITAS_MAKRO_TENTUKAN_SWING.mp4"),
+            (4,"T3_04_SHORT_SQUEEZE_FORCED_FLOW.mp4"),
+            (5,"T3_05_ETF_UBAH_AKSES_INSTITUSI.mp4"),
+            (6,"T3_06_MARKET_EFISIEN_ARBITRASE.mp4"),
+            (7,"T3_07_TREASURY_CRYPTO_BUKAN_PLANET_SENDIRI.mp4"),
+            (8,"T3_08_LIQUIDITY_CLOCK_ADOPTION_CLOCK.mp4"),
+            (9,"T3_09_RETAIL_JANGAN_SOK_TIMING.mp4"),
+            (10,"T3_10_POSITION_SIZING_SIAP_HILANG.mp4"),
+            (11,"T3_11_DCA_ELIMINASI_EMOSI.mp4"),
+            (12,"T3_12_HARGA_VS_TESIS_SURVIVAL.mp4"),
+            (13,"T3_13_BUKTI_EKSEKUSI_PORTOFOLIO.mp4")
           ]
-          start=group*3
-          end=min(start+3,len(files))
-          for idx in range(start,end):
-              clip_id=idx+1
-              out="out/"+files[idx]
-              subprocess.run([
-                "npx","remotion","render","src/index.jsx","Timothy3Clip",out,
-                "--props="+f'{{"clipId":{clip_id}}}',
-                "--codec=h264","--crf=18","--pixel-format=yuv420p","--concurrency=2"
-              ],check=True)
+          g=int(os.environ["GROUP"])
+          for idx in range(g*3,min(g*3+3,len(clips))):
+            clip_id,name=clips[idx]
+            subprocess.run([
+              "npx","remotion","render","src/index.jsx","Timothy3Clip","out/"+name,
+              "--props="+json.dumps({"clipId":clip_id}),
+              "--codec=h264","--crf=18","--pixel-format=yuv420p","--concurrency=2"
+            ],check=True)
           PY
 
-      - name: Validate outputs
+      - name: Validate
         run: |
           for f in remotion/out/*.mp4; do
             test -s "$f"
-            ffprobe -v error -select_streams v:0 -show_entries stream=width,height,r_frame_rate -of default=nw=1 "$f"
+            ffprobe -v error -select_streams v:0 -show_entries stream=width,height,r_frame_rate -show_entries format=duration -of default=nw=1 "$f"
           done
 
       - uses: actions/upload-artifact@v4
