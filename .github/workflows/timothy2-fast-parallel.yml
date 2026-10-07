@@ -1,6 +1,10 @@
 name: Timothy 2 Fast Parallel
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - '.timothy2-fast/**'
   pull_request:
     branches: [main]
     paths:
