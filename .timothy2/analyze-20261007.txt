@@ -1,1 +1,3 @@
 Trigger Timothy 2 analysis package for clip selection audit.
+
+Retrigger analysis only.
