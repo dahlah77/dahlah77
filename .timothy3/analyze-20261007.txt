@@ -1,1 +1,2 @@
 Trigger Timothy 3 analysis before clipping.
+Retrigger analysis worker.\n
