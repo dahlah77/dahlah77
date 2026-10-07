@@ -1,0 +1,78 @@
+name: Timothy 3 Worker
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.timothy3/**'
+
+permissions:
+  contents: read
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y ffmpeg
+          python -m pip install --upgrade pip
+          pip install gdown faster-whisper "av<19"
+
+      - name: Download source
+        run: |
+          mkdir -p work/out
+          gdown "1FYGqHgVclstPK2DHM86KqeTVlW1MNNFf" -O work/timothy3.mp4
+          ls -lh work/timothy3.mp4
+          ffprobe -v error -show_format -show_streams work/timothy3.mp4 > work/out/meta.txt
+
+      - name: Transcribe Indonesian
+        run: |
+          cat > work/transcribe.py <<'PY'
+          from faster_whisper import WhisperModel
+          import json
+          model = WhisperModel("small", device="cpu", compute_type="int8")
+          segments, info = model.transcribe(
+              "work/timothy3.mp4",
+              language="id",
+              beam_size=5,
+              vad_filter=True,
+              word_timestamps=True,
+              condition_on_previous_text=True,
+          )
+          data={"language":info.language,"language_probability":info.language_probability,"segments":[]}
+          srt=[]
+          def ts(t):
+              ms=int(round(t*1000)); h,ms=divmod(ms,3600000); m,ms=divmod(ms,60000); s,ms=divmod(ms,1000)
+              return f"{h:02}:{m:02}:{s:02},{ms:03}"
+          for i,seg in enumerate(segments,1):
+              data["segments"].append({
+                  "id":i,"start":seg.start,"end":seg.end,"text":seg.text.strip(),
+                  "words":[{"start":w.start,"end":w.end,"word":w.word,"probability":w.probability} for w in (seg.words or [])]
+              })
+              srt.append(f"{i}\n{ts(seg.start)} --> {ts(seg.end)}\n{seg.text.strip()}\n")
+          json.dump(data,open("work/out/transcript.json","w",encoding="utf-8"),ensure_ascii=False,indent=2)
+          open("work/out/transcript.srt","w",encoding="utf-8").write("\n".join(srt))
+          PY
+          python work/transcribe.py
+
+      - name: Make lightweight proxy
+        run: |
+          ffmpeg -y -i work/timothy3.mp4 \
+            -vf "scale=-2:360" \
+            -c:v libx264 -preset veryfast -b:v 260k -maxrate 320k -bufsize 640k \
+            -c:a aac -b:a 56k -ac 1 \
+            -movflags +faststart work/out/proxy.mp4
+
+      - name: Upload analysis package
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: timothy3-analysis
+          path: work/out/
+          compression-level: 6
+          retention-days: 1
