@@ -31,7 +31,7 @@ jobs:
           path: audited
           github-token: ${{ github.token }}
           repository: dahlah77/dahlah77
-          run-id: 37493180502
+          run-id: 37581447821
       - name: Copy audited transcript
         run: |
           cp audited/transcript.json input/transcript.json
@@ -88,23 +88,23 @@ jobs:
           npm install --no-audit --no-fund
           cat > src/clips.js <<'EOF'
           export const clips = [
-            {id:1,start:0.02,end:90.90,title:"ASET TERBESAR UMUR 20–30 BUKAN UANG"},
-            {id:2,start:91.12,end:199.10,title:"WAKTU & ENERGI LU SEDANG TERBAKAR"},
-            {id:3,start:199.24,end:343.10,title:"GAJI 50 JUTA VS SKILL STACKING"},
-            {id:4,start:343.26,end:498.50,title:"UANG CUMA OUTPUT — MESINNYA ADALAH LU"},
-            {id:5,start:498.64,end:553.10,title:"SATU SKILL BIKIN KAYA, DUA DUNIA BIKIN BERBAHAYA"},
-            {id:6,start:553.52,end:694.20,title:"RAHASIA WARREN BUFFETT YANG JARANG DIBAHAS"},
-            {id:7,start:694.46,end:803.30,title:"ELON MUSK & CATEGORY OF ONE"},
-            {id:8,start:803.48,end:864.00,title:"JANGAN CARI PASSION — BANGUN OTAK ANTI MISKIN"},
-            {id:9,start:864.22,end:964.05,title:"BERUBAH BUKAN PLIN-PLAN, TAPI ADAPTIF"},
-            {id:10,start:964.14,end:1051.45,title:"UANG SEHARUSNYA MEMBELI OPTIONALITAS"},
-            {id:11,start:1052.00,end:1200.30,title:"STATUS GAK ADA HABISNYA — CARI F*CK-YOU MONEY"},
-            {id:12,start:1200.46,end:1368.35,title:"4 LEVEL KEKAYAAN"},
-            {id:13,start:1368.68,end:1506.90,title:"NETWORKING BUKAN KENALAN — TAPI VALUE"},
-            {id:14,start:1507.28,end:1620.20,title:"PILIH GAME YANG BISA COMPOUND"},
-            {id:15,start:1623.04,end:1655.00,title:"1000 KONTEN, 10.000 BARIS, 1000 JAM"},
-            {id:16,start:1655.32,end:1709.45,title:"JANGAN BIKIN STARTUP KARENA GENGSI"},
-            {id:17,start:1709.94,end:1757.30,title:"UANG ITU UNTUK BELI WAKTU"},
+            {id:1,start:0.02,end:90.78,title:"ASET TERBESAR UMUR 20–30 BUKAN UANG"},
+            {id:2,start:91.12,end:198.78,title:"WAKTU & ENERGI LU SEDANG TERBAKAR"},
+            {id:3,start:199.26,end:343.28,title:"GAJI 50 JUTA VS SKILL STACKING"},
+            {id:4,start:343.62,end:498.42,title:"UANG CUMA OUTPUT — MESINNYA ADALAH LU"},
+            {id:5,start:498.88,end:550.86,title:"SATU SKILL BIKIN KAYA, DUA DUNIA BIKIN BERBAHAYA"},
+            {id:6,start:556.58,end:694.02,title:"RAHASIA WARREN BUFFETT YANG JARANG DIBAHAS"},
+            {id:7,start:696.40,end:803.16,title:"ELON MUSK & CATEGORY OF ONE"},
+            {id:8,start:803.54,end:863.82,title:"JANGAN CARI PASSION — BANGUN OTAK ANTI MISKIN"},
+            {id:9,start:864.34,end:964.18,title:"BERUBAH BUKAN PLIN-PLAN, TAPI ADAPTIF"},
+            {id:10,start:964.40,end:1051.70,title:"UANG SEHARUSNYA MEMBELI OPTIONALITAS"},
+            {id:11,start:1052.00,end:1200.52,title:"STATUS GAK ADA HABISNYA — CARI F*CK-YOU MONEY"},
+            {id:12,start:1200.88,end:1368.28,title:"4 LEVEL KEKAYAAN"},
+            {id:13,start:1368.66,end:1506.86,title:"NETWORKING BUKAN KENALAN — TAPI VALUE"},
+            {id:14,start:1507.30,end:1620.16,title:"PILIH GAME YANG BISA COMPOUND"},
+            {id:15,start:1620.50,end:1654.92,title:"1000 KONTEN, 10.000 BARIS, 1000 JAM"},
+            {id:16,start:1655.40,end:1709.34,title:"JANGAN BIKIN STARTUP KARENA GENGSI"},
+            {id:17,start:1709.98,end:1757.20,title:"UANG ITU UNTUK BELI WAKTU"},
             {id:18,start:1757.76,end:1881.20,title:"BELUM KAYA DI 23? JANGAN PANIK"}
           ];
           EOF
