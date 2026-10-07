@@ -2,13 +2,10 @@ name: Timothy 2 Fast Parallel
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
     paths:
-      - '.timothy2-fast/**'
-  pull_request:
-    branches: [main]
-    paths:
-      - '.timothy2-fast/**'
+      - ".timothy2-fast/**"
 
 permissions:
   contents: read
@@ -19,35 +16,9 @@ jobs:
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
-      - name: Install transcription tools
-        run: |
-          python -m pip install --upgrade pip
-          pip install gdown "faster-whisper==1.2.1" "av<19"
-      - name: Download source
-        run: |
-          mkdir -p work
-          gdown "1_gHGvzOER1E8WcUwn7UfrxwkhXE4autT" -O work/timothy2.mp4
-      - name: Transcribe once
-        run: |
-          cat > work/transcribe.py <<'PY'
-          from faster_whisper import WhisperModel
-          import json
-          prompt = """Bahasa Indonesia santai. Topik: waktu, energi, skill stacking, reputasi, kesempatan, uang, optionalitas, investasi, Warren Buffett, Berkshire Hathaway, Elon Musk, sales, marketing, copywriting, media, category of one, adaptif, ownership, networking, value, compound, startup, passion."""
-          model = WhisperModel("small", device="cpu", compute_type="int8")
-          segments, info = model.transcribe(
-              "work/timothy2.mp4", language="id", beam_size=5,
-              vad_filter=True, word_timestamps=True,
-              initial_prompt=prompt, condition_on_previous_text=True,
-          )
-          data={"language":info.language,"segments":[]}
-          for i,s in enumerate(segments,1):
-              data["segments"].append({
-                  "id":i,"start":s.start,"end":s.end,"text":s.text.strip(),
-                  "words":[{"start":w.start,"end":w.end,"word":w.word,"probability":w.probability} for w in (s.words or [])]
-              })
-          json.dump(data,open("work/transcript.json","w",encoding="utf-8"),ensure_ascii=False)
-          PY
-          python work/transcribe.py
+      - run: python -m pip install gdown "faster-whisper==1.2.1" "av<19"
+      - run: mkdir -p work && gdown "1_gHGvzOER1E8WcUwn7UfrxwkhXE4autT" -O work/timothy2.mp4
+      - run: python .github/scripts/timothy2_prepare.py
       - uses: actions/upload-artifact@v4
         with:
           name: timothy2-transcript-fast
@@ -61,105 +32,23 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        group: [0,1,2,3,4,5]
+        group:
+          - 0
+          - 1
+          - 2
+          - 3
+          - 4
+          - 5
     steps:
       - uses: actions/checkout@v4
-      - name: Install render tools
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y ffmpeg fonts-dejavu-core
-          python -m pip install gdown
+      - run: sudo apt-get update -qq && sudo apt-get install -y ffmpeg fonts-dejavu-core
+      - run: python -m pip install gdown
       - uses: actions/download-artifact@v4
         with:
           name: timothy2-transcript-fast
           path: work
-      - name: Download source
-        run: |
-          gdown "1_gHGvzOER1E8WcUwn7UfrxwkhXE4autT" -O work/timothy2.mp4
-      - name: Render three clips
-        env:
-          GROUP: ${{ matrix.group }}
-        run: |
-          cat > work/render.py <<'PY'
-          import json, os, re, subprocess, textwrap
-          clips=[
-            {"n":1,"start":0.02,"end":91.20,"title":"ASET TERBESAR DI USIA 20–30","file":"T2_01_ASET_TERBESAR_USIA_20_30.mp4"},
-            {"n":2,"start":91.20,"end":198.90,"title":"WAKTU & ENERGI = MODAL YANG TERBAKAR","file":"T2_02_WAKTU_ENERGI_MODAL_TERBAKAR.mp4"},
-            {"n":3,"start":199.20,"end":346.36,"title":"GAJI 50 JUTA VS SKILL STACKING","file":"T2_03_GAJI_50JT_VS_SKILL_STACKING.mp4"},
-            {"n":4,"start":346.36,"end":498.42,"title":"UANG CUMA OUTPUT — MESINNYA ADALAH LO","file":"T2_04_UANG_CUMA_OUTPUT_MESINNYA_LO.mp4"},
-            {"n":5,"start":498.42,"end":553.02,"title":"SATU SKILL BIKIN KAYA, DUA DUNIA BIKIN BERBAHAYA","file":"T2_05_DUA_DUNIA_BIKIN_BERBAHAYA.mp4"},
-            {"n":6,"start":553.66,"end":694.04,"title":"RAHASIA WARREN BUFFETT: DUA DUNIA","file":"T2_06_RAHASIA_WARREN_BUFFETT.mp4"},
-            {"n":7,"start":696.34,"end":803.14,"title":"ELON MUSK & CATEGORY OF ONE","file":"T2_07_ELON_MUSK_CATEGORY_OF_ONE.mp4"},
-            {"n":8,"start":803.14,"end":864.22,"title":"JANGAN CARI PASSION — BANGUN OTAK ANTI MISKIN","file":"T2_08_OTAK_ANTI_MISKIN.mp4"},
-            {"n":9,"start":864.22,"end":964.14,"title":"BERUBAH BUKAN PLIN-PLAN, TAPI ADAPTIF","file":"T2_09_BERUBAH_BUKAN_PLIN_PLAN_TAPI_ADAPTIF.mp4"},
-            {"n":10,"start":971.10,"end":1051.36,"title":"UANG ITU UNTUK OPTIONALITAS","file":"T2_10_UANG_UNTUK_OPTIONALITAS.mp4"},
-            {"n":11,"start":1051.90,"end":1200.52,"title":"STATUS GAK ADA HABISNYA","file":"T2_11_STATUS_GAK_ADA_HABISNYA.mp4"},
-            {"n":12,"start":1200.52,"end":1368.30,"title":"4 LEVEL KEKAYAAN","file":"T2_12_4_LEVEL_KEKAYAAN.mp4"},
-            {"n":13,"start":1368.68,"end":1506.78,"title":"NETWORKING BUKAN KENALAN — TAPI VALUE","file":"T2_13_NETWORKING_ADALAH_VALUE.mp4"},
-            {"n":14,"start":1507.32,"end":1620.14,"title":"PILIH GAME YANG COMPOUND","file":"T2_14_PILIH_GAME_YANG_COMPOUND.mp4"},
-            {"n":15,"start":1620.14,"end":1654.92,"title":"1000 KONTEN, 10.000 BARIS, 1000 JAM","file":"T2_15_1000_KONTEN_10000_BARIS_1000_JAM.mp4"},
-            {"n":16,"start":1655.32,"end":1709.36,"title":"JANGAN BIKIN STARTUP KARENA GENGSI","file":"T2_16_JANGAN_STARTUP_KARENA_GENGSI.mp4"},
-            {"n":17,"start":1710.02,"end":1757.20,"title":"UANG ITU UNTUK BELI WAKTU","file":"T2_17_UANG_UNTUK_BELI_WAKTU.mp4"},
-            {"n":18,"start":1757.70,"end":1881.20,"title":"JANGAN PANIK KALAU BELUM KAYA DI 23","file":"T2_18_JANGAN_PANIK_BELUM_KAYA_UMUR_23.mp4"},
-          ]
-          group=int(os.environ["GROUP"])
-          selected=clips[group*3:group*3+3]
-          data=json.load(open("work/transcript.json",encoding="utf-8"))
-          words=[w for s in data["segments"] for w in s.get("words",[]) if w.get("start") is not None and w.get("end") is not None]
-          keys={"uang","waktu","energi","skill","reputasi","optionalitas","investasi","warren","buffett","berkshire","elon","musk","sales","marketing","copywriting","media","adaptif","ownership","networking","value","compound","startup","passion","miskin","kaya","status","mesin","1000","10000","beli","bebas"}
-          def esc(s): return s.replace("\\","\\\\").replace("{","(").replace("}",")")
-          def fmt(t):
-              t=max(0,t); h=int(t//3600); t-=h*3600; m=int(t//60); s=t-m*60
-              return f"{h}:{m:02d}:{s:05.2f}"
-          def deco(g):
-              out=[]
-              for x in g:
-                  raw=x["word"].strip()
-                  key=re.sub(r"[^0-9A-Za-zÀ-ÿ_-]","",raw).lower()
-                  out.append((r"{\c&H00D7FF&}"+esc(raw)+r"{\c&HFFFFFF&}") if key in keys else esc(raw))
-              return " ".join(out).upper()
-          os.makedirs("work/out",exist_ok=True); os.makedirs("work/ass",exist_ok=True)
-          for c in selected:
-              cw=[w for w in words if w["start"]>=c["start"]-0.08 and w["end"]<=c["end"]+0.08]
-              groups=[]; cur=[]
-              for w in cw:
-                  if not cur: cur=[w]; continue
-                  gap=w["start"]-cur[-1]["end"]; dur=w["end"]-cur[0]["start"]
-                  if len(cur)>=4 or gap>0.48 or dur>1.75 or (re.search(r"[.!?]$",cur[-1]["word"].strip()) and len(cur)>=2):
-                      groups.append(cur); cur=[w]
-                  else: cur.append(w)
-              if cur: groups.append(cur)
-              ap=f"work/ass/{c['n']:02d}.ass"
-              with open(ap,"w",encoding="utf-8") as f:
-                  f.write("""[Script Info]
-ScriptType: v4.00+
-PlayResX: 720
-PlayResY: 1280
-WrapStyle: 0
-ScaledBorderAndShadow: yes
-
-[V4+ Styles]
-Format: Name,Fontname,Fontsize,PrimaryColour,SecondaryColour,OutlineColour,BackColour,Bold,Italic,Underline,StrikeOut,ScaleX,ScaleY,Spacing,Angle,BorderStyle,Outline,Shadow,Alignment,MarginL,MarginR,MarginV,Encoding
-Style: Sub,DejaVu Sans,58,&H00FFFFFF,&H0000D7FF,&H00000000,&H70000000,-1,0,0,0,100,100,0,0,1,5,1,2,60,60,190,1
-Style: Title,DejaVu Sans,50,&H00FFFFFF,&H0000D7FF,&H00000000,&H88000000,-1,0,0,0,100,100,0,0,3,2,0,8,42,42,76,1
-
-[Events]
-Format: Layer,Start,End,Style,Name,MarginL,MarginR,MarginV,Effect,Text
-""")
-                  title=r"\N".join(esc(x) for x in textwrap.wrap(c["title"],27)[:2])
-                  f.write(f"Dialogue: 1,{fmt(0)},{fmt(min(2.0,c['end']-c['start']))},Title,,0,0,0,,{title}\n")
-                  for g in groups:
-                      st=max(0,g[0]["start"]-c["start"]); en=min(c["end"]-c["start"],max(st+0.45,g[-1]["end"]-c["start"]))
-                      f.write(f"Dialogue: 0,{fmt(st)},{fmt(en)},Sub,,0,0,0,,{deco(g)}\n")
-              vf=("crop=608:1080:500:0,scale=720:1280:flags=lanczos,"
-                  "zoompan=z='1.012+0.008*sin(on/55)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=1:s=720x1280:fps=24,"
-                  f"ass='{ap}'")
-              dur=c["end"]-c["start"]
-              subprocess.run(["ffmpeg","-y","-hide_banner","-loglevel","warning","-ss",f"{c['start']:.2f}","-i","work/timothy2.mp4","-t",f"{dur:.2f}",
-                  "-vf",vf,"-c:v","libx264","-preset","veryfast","-crf","20","-maxrate","4M","-bufsize","8M","-pix_fmt","yuv420p","-r","24",
-                  "-c:a","aac","-b:a","128k","-ar","44100","-movflags","+faststart",f"work/out/{c['file']}"],check=True)
-          PY
-          python work/render.py
+      - run: gdown "1_gHGvzOER1E8WcUwn7UfrxwkhXE4autT" -O work/timothy2.mp4
+      - run: python .github/scripts/timothy2_render.py "${{ matrix.group }}"
       - uses: actions/upload-artifact@v4
         with:
           name: t2fast-group-${{ matrix.group }}
