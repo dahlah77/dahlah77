@@ -50,7 +50,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        group: [0,1,2,3,4,5]
+        clip: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -258,22 +258,21 @@ jobs:
           registerRoot(RemotionRoot);
           EOF
           npx remotion browser ensure
-      - name: Render assigned clips with Remotion
+      - name: Render assigned clip with Remotion
         env:
-          GROUP: ${{ matrix.group }}
+          CLIP_ID: ${{ matrix.clip }}
         run: |
           cd remotion
-          START=$((GROUP*3+1))
-          END=$((START+2))
-          for ID in $(seq $START $END); do
-            PAD=$(printf "%02d" "$ID")
-            echo "Rendering clip $PAD with Remotion"
-            npx remotion render src/index.jsx TimothyClip "out/T2_${PAD}.mp4"               --props="{\"clipId\":$ID}"               --codec=h264 --crf=18 --pixel-format=yuv420p --concurrency=2
-          done
-      - name: Upload rendered group
+          ID="$CLIP_ID"
+          PAD=$(printf "%02d" "$ID")
+          echo "Rendering clip $PAD with Remotion"
+          npx remotion render src/index.jsx TimothyClip "out/T2_${PAD}.mp4" \
+            --props="{\"clipId\":$ID}" \
+            --codec=h264 --crf=18 --pixel-format=yuv420p --concurrency=2
+      - name: Upload rendered clip
         uses: actions/upload-artifact@v4
         with:
-          name: timothy2-remotion-group-${{ matrix.group }}
+          name: timothy2-remotion-clip-${{ matrix.clip }}
           path: remotion/out/*.mp4
           compression-level: 0
           retention-days: 1
