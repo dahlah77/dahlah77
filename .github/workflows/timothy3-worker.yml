@@ -1,6 +1,12 @@
 name: Timothy 3 Worker
 
 on:
+  push:
+    branches:
+      - 'timothy3-analysis-*'
+    paths:
+      - '.timothy3/**'
+      - '.github/workflows/timothy3-worker.yml'
   pull_request:
     branches: [main]
     paths:
