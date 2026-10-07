@@ -1,4 +1,4 @@
-name: Timothy 2 Worker
+name: Timothy 3 Analysis Worker
 
 on:
   pull_request:
@@ -26,9 +26,9 @@ jobs:
       - name: Download source
         run: |
           mkdir -p work/out
-          gdown "1_gHGvzOER1E8WcUwn7UfrxwkhXE4autT" -O work/timothy2.mp4
-          ls -lh work/timothy2.mp4
-          ffprobe -v error -show_format -show_streams work/timothy2.mp4 > work/out/meta.txt
+          gdown "1FYGqHgVclstPK2DHM86KqeTVlW1MNNFf" -O work/timothy3.mp4
+          ls -lh work/timothy3.mp4
+          ffprobe -v error -show_format -show_streams work/timothy3.mp4 > work/out/meta.txt
 
       - name: Transcribe Indonesian
         run: |
@@ -36,9 +36,9 @@ jobs:
           from faster_whisper import WhisperModel
           import json
 
-          model = WhisperModel("base", device="cpu", compute_type="int8")
+          model = WhisperModel("small", device="cpu", compute_type="int8")
           segments, info = model.transcribe(
-              "work/timothy2.mp4",
+              "work/timothy3.mp4",
               language="id",
               beam_size=3,
               vad_filter=True,
@@ -78,7 +78,7 @@ jobs:
 
       - name: Make lightweight proxy
         run: |
-          ffmpeg -y -i work/timothy2.mp4 \
+          ffmpeg -y -i work/timothy3.mp4 \
             -vf "scale=-2:270" \
             -c:v libx264 -preset veryfast -b:v 180k -maxrate 230k -bufsize 460k \
             -c:a aac -b:a 48k -ac 1 \
@@ -88,7 +88,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: timothy2-analysis
+          name: timothy3-analysis
           path: work/out/
           compression-level: 6
           retention-days: 1
