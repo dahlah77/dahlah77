@@ -1,0 +1,188 @@
+name: Timothy 4 Remotion Rescue
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.timothy4-rescue/**'
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download audited input files
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python -m pip install gdown
+          mkdir -p input
+          gdown "1SRW1MX-FaLEDcRtDBWfUJVijCMEu6pNR" -O input/source.mp4
+          test -s input/source.mp4
+          gh api /repos/${GITHUB_REPOSITORY}/actions/artifacts/11534476517/zip > analysis.zip
+          unzip -o analysis.zip transcript.json -d input
+          test -s input/transcript.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: timothy4-remotion-input
+          path: input/
+          compression-level: 0
+          retention-days: 3
+
+  render:
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 95
+    strategy:
+      fail-fast: false
+      max-parallel: 11
+      matrix:
+        group: [0]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install tools
+        run: |
+          command -v ffmpeg
+          fc-list | head -1 || true
+      - uses: actions/download-artifact@v4
+        with:
+          name: timothy4-remotion-input
+          path: remotion/input
+      - name: Build editable Remotion composition
+        working-directory: remotion
+        run: |
+          mkdir -p public src out
+          mv input/source.mp4 public/source.mp4
+          cp input/transcript.json src/transcript.json
+          cp ../timothy4/clips.json src/clips.json
+          cat > package.json <<'JSON'
+          {"name":"timothy4-remotion","private":true,"type":"module",
+          "dependencies":{"remotion":"4.0.530","@remotion/cli":"4.0.530","@remotion/media":"4.0.530","react":"19.1.0","react-dom":"19.1.0"}}
+          JSON
+          npm install --no-audit --no-fund
+          cat > src/Clip.jsx <<'JSX'
+          import React,{useMemo} from "react";
+          import {AbsoluteFill,interpolate,spring,staticFile,useCurrentFrame,useVideoConfig} from "remotion";
+          import {Video} from "@remotion/media";
+          import clips from "./clips.json";
+          import transcript from "./transcript.json";
+
+          const words=transcript.segments.flatMap(s=>(s.words||[]).filter(w=>Number.isFinite(w.start)&&Number.isFinite(w.end)));
+          const keyset=new Set(["uang","investasi","bitcoin","bisnis","klien","marketing","content","konten","customer","sales","cash","networking","skill","investor","aset","karyawan","sop","referral","fokus","harga","profit","income","niche","agency","agensi","portofolio","kerugian","cashflow","darurat","cagr","keluarga","orang","tua","miliar","juta","hiring"]);
+          const norm=(x)=>x.toLowerCase().replace(/[^a-zà-ÿ0-9]/g,"");
+          const pagesFor=(clip)=>{
+            const w=words.filter(x=>x.start>=clip.start-0.06&&x.end<=clip.end+0.11);
+            const pages=[];let p=[];
+            for(const item of w){
+              if(!p.length){p=[item];continue;}
+              const pause=item.start-p[p.length-1].end;
+              if(p.length>=4||pause>0.52||item.end-p[0].start>1.72||(/[.!?]$/.test(p[p.length-1].word)&&p.length>=2)){
+                pages.push(p);p=[item];
+              }else p.push(item);
+            }
+            if(p.length)pages.push(p);
+            return pages.map(p=>({start:p[0].start,end:p[p.length-1].end,words:p}));
+          };
+
+          export const Clip=({clipId})=>{
+            const clip=clips.find(c=>c.id===clipId)||clips[0];
+            const frame=useCurrentFrame(),{fps,durationInFrames}=useVideoConfig();
+            const t=clip.start+frame/fps;
+            const pages=useMemo(()=>pagesFor(clip),[clip.id]);
+            let lo=0,hi=pages.length-1,activePage=null;
+            while(lo<=hi){
+              const mid=(lo+hi)>>1,p=pages[mid];
+              if(t<p.start-0.07)hi=mid-1;
+              else if(t>p.end+0.14)lo=mid+1;
+              else{activePage=p;break;}
+            }
+            const enter=spring({fps,frame,config:{damping:20,stiffness:170}});
+            const titleAlpha=interpolate(frame,[0,8,52,72],[0,1,1,0],{extrapolateLeft:"clamp",extrapolateRight:"clamp"});
+            const progress=Math.min(1,frame/Math.max(1,durationInFrames-1));
+            const scale=1.015+0.007*Math.sin(frame/60);
+            return <AbsoluteFill style={{backgroundColor:"#060606",fontFamily:"DejaVu Sans,Arial,sans-serif",overflow:"hidden"}}>
+              <Video src={staticFile("source.mp4")} trimBefore={Math.round(clip.start*fps)}
+                durationInFrames={durationInFrames} volume={1}
+                style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",
+                objectPosition:"40% 50%",transform:`scale(${scale})`,filter:"contrast(1.045) saturate(1.02)"}} />
+              <AbsoluteFill style={{background:"linear-gradient(180deg,rgba(0,0,0,.16) 0%,rgba(0,0,0,0) 38%,rgba(0,0,0,0) 58%,rgba(0,0,0,.54) 100%)"}}/>
+              <div style={{position:"absolute",top:0,left:0,height:5,width:`${progress*100}%`,background:"#FADA25"}}/>
+              <div style={{position:"absolute",top:52,left:30,right:30,opacity:titleAlpha,display:"flex",justifyContent:"center",transform:`scale(${.95+.05*enter})`}}>
+                <div style={{maxWidth:645,padding:"17px 22px",borderRadius:15,
+                  background:"rgba(0,0,0,.75)",border:"1px solid rgba(255,255,255,.12)",
+                  textAlign:"center",fontSize:41,fontWeight:950,lineHeight:1.11,
+                  letterSpacing:"-1px",color:"white",textShadow:"0 3px 8px #000"}}>{clip.title}</div>
+              </div>
+              {activePage?<div style={{
+                position:"absolute",left:44,right:44,bottom:180,textAlign:"center",
+                fontSize:55,fontWeight:950,lineHeight:1.10,letterSpacing:-1,
+                filter:"drop-shadow(0px 4px 7px rgba(0,0,0,.88))"
+              }}>{activePage.words.map((w,i)=>{
+                const highlight=t>=w.start&&t<=w.end+.07;
+                return <span key={i} style={{display:"inline-block",margin:"0 6px 4px",textTransform:"uppercase",
+                color:highlight?"#FFE23F":(keyset.has(norm(w.word))?"#FFF6B2":"#FFFFFF"),
+                WebkitTextStroke:"2.2px rgba(0,0,0,.92)",transform:highlight?"scale(1.055)":"scale(1)"}}
+                >{w.word.trim()}</span>;
+              })}</div>:null}
+              <div style={{position:"absolute",bottom:75,right:24,fontSize:17,fontWeight:800,
+                color:"rgba(255,255,255,.83)",background:"rgba(0,0,0,.5)",padding:"7px 13px",borderRadius:10}}>TIMOTHY RONALD</div>
+            </AbsoluteFill>;
+          };
+          JSX
+          cat > src/Root.jsx <<'JSX'
+          import React from "react";
+          import {Composition} from "remotion";
+          import {Clip} from "./Clip.jsx";
+          import clips from "./clips.json";
+          export const Root=()=>(
+            <Composition id="Timothy4" component={Clip} width={720} height={1280} fps={24}
+              durationInFrames={Math.ceil((clips[0].end-clips[0].start)*24)}
+              defaultProps={{clipId:1}}
+              calculateMetadata={({props})=>{
+                const c=clips.find(c=>c.id===props.clipId)||clips[0];
+                return {durationInFrames:Math.ceil((c.end-c.start)*24),defaultOutName:c.file};
+              }}
+            />
+          );
+          JSX
+          cat > src/index.jsx <<'JSX'
+          import {registerRoot} from "remotion";
+          import {Root} from "./Root.jsx";
+          registerRoot(Root);
+          JSX
+          npx remotion browser ensure
+      - name: Render assigned clips
+        env:
+          GROUP: ${{ matrix.group }}
+        working-directory: remotion
+        run: |
+          python - <<'PY'
+          import json,os,subprocess
+          cs=json.load(open("src/clips.json"))
+          group=int(os.environ["GROUP"])
+          for c in cs[group*2:group*2+2]:
+            print("Rendering",c["file"],flush=True)
+            subprocess.run(["npx","remotion","render","src/index.jsx","Timothy4","out/"+c["file"],
+              "--props="+json.dumps({"clipId":c["id"]}),
+              "--codec=h264","--crf=20","--pixel-format=yuv420p","--concurrency=2"],check=True)
+          PY
+      - name: Validate output
+        run: |
+          count=$(find remotion/out -name 'T4_*.mp4' -type f | wc -l)
+          test "$count" -eq 2
+          for file in remotion/out/*.mp4; do
+            test -s "$file"
+            ffprobe -v error -show_entries stream=width,height,r_frame_rate -show_entries format=duration -of default=nw=1 "$file"
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: timothy4-remotion-group-${{ matrix.group }}
+          path: remotion/out/*.mp4
+          compression-level: 0
+          retention-days: 3
