@@ -16,6 +16,8 @@ jobs:
       - name: Download inspected video
         run: |
           python -m pip install gdown
+          sudo apt-get update -qq
+          sudo apt-get install -y ffmpeg
           mkdir -p work
           gdown 1Yv_8FM-qnOnLq2KIG2bGbMMbmkoM0R0v -O work/source.mp4
           test $(stat -c %s work/source.mp4) -gt 300000000
@@ -83,12 +85,11 @@ jobs:
           selected=sorted(groups[int(os.environ['GROUP'])],key=lambda c:c['id'])
           print("render group",os.environ['GROUP'],[(c['id'],round(c['end']-c['start'])) for c in selected],flush=True)
           for c in selected:
-            out='timothy5/out/'+c['file']
             subprocess.run([
-              'npx','remotion','render','timothy5/index.jsx',
-              'T5_'+str(c['id']).zfill(2),out,
+              'npx','remotion','render','index.jsx',
+              'T5_'+str(c['id']).zfill(2),'out/'+c['file'],
               '--codec=h264','--crf=20','--pixel-format=yuv420p','--concurrency=2'
-            ],check=True)
+            ],cwd='timothy5',check=True)
           PY
       - name: Validate playable MP4, portrait orientation, durations
         env:
