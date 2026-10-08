@@ -5,7 +5,7 @@ import clips from './clips.json';
 const FPS=24;
 export const RemotionRoot=()=> <>{clips.map(clip=><Composition
   key={clip.id}
-  id={'T5_'+String(clip.id).padStart(2,'0')}
+  id={'T5-'+String(clip.id).padStart(2,'0')}
   component={Timothy5Clip}
   width={720}
   height={1280}
