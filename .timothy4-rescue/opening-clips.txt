@@ -1,0 +1,2 @@
+Recover group 0 only: Timothy 4 clips 01 and 02, same audited clip map.
+Retry with ffmpeg install (skip apt update).
