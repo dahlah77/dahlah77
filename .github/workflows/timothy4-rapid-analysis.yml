@@ -1,0 +1,42 @@
+name: Timothy 4 Rapid Content Index
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.timothy4-rapid/**'
+permissions:
+  contents: read
+jobs:
+  index:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+      - name: Tools
+        run: |
+          python -m pip install gdown "faster-whisper==1.2.1" "av<19"
+      - name: Source
+        run: |
+          mkdir -p work/out
+          gdown "1SRW1MX-FaLEDcRtDBWfUJVijCMEu6pNR" -O work/source.mp4
+      - name: Rapid full transcription
+        run: |
+          cat > work/transcribe.py <<'PY'
+          from faster_whisper import WhisperModel
+          import json
+          model=WhisperModel("tiny",device="cpu",compute_type="int8")
+          segments,meta=model.transcribe("work/source.mp4",language="id",beam_size=2,vad_filter=True,word_timestamps=True,condition_on_previous_text=True)
+          data={"language":meta.language,"segments":[]}
+          with open("work/out/transcript.txt","w",encoding="utf-8") as t:
+            for i,s in enumerate(segments):
+              w=[{"start":round(a.start,3),"end":round(a.end,3),"word":a.word} for a in (s.words or [])]
+              data["segments"].append({"id":i,"start":s.start,"end":s.end,"text":s.text,"words":w})
+              t.write(f"[{s.start:.2f} - {s.end:.2f}] {s.text}\n")
+          json.dump(data,open("work/out/transcript.json","w",encoding="utf-8"),ensure_ascii=False)
+          PY
+          python work/transcribe.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: timothy4-rapid-index
+          path: work/out/
+          retention-days: 3
