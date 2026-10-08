@@ -63,8 +63,8 @@ jobs:
       - name: Set up source and Remotion packages
         run: |
           mkdir -p timothy5/public timothy5/out
-          cp work/work/source.mp4 timothy5/public/source.mp4
-          cp work/work/transcript.json timothy5/transcript.json
+          cp work/source.mp4 timothy5/public/source.mp4
+          cp work/transcript.json timothy5/transcript.json
           cd timothy5
           npm install --no-audit --no-fund
           npx remotion browser ensure
