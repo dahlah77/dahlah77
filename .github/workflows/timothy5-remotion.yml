@@ -87,7 +87,7 @@ jobs:
           for c in selected:
             subprocess.run([
               'npx','remotion','render','index.jsx',
-              'T5_'+str(c['id']).zfill(2),'out/'+c['file'],
+              'T5-'+str(c['id']).zfill(2),'out/'+c['file'],
               '--codec=h264','--crf=20','--pixel-format=yuv420p','--concurrency=2'
             ],cwd='timothy5',check=True)
           PY
