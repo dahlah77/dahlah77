@@ -1,0 +1,49 @@
+name: Timothy 5 Quick Parallel Review
+on:
+  pull_request:
+    branches: [main]
+    paths: ['.timothy5-quick/**']
+permissions: {contents: read}
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy: {fail-fast: false, matrix: {part: [0,1,2,3]}}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install gdown "faster-whisper==1.2.1" "av<19"
+          sudo apt-get update -qq
+          sudo apt-get install -y ffmpeg
+      - name: Source and segment
+        env: {PART: "${{ matrix.part }}"}
+        run: |
+          mkdir -p out
+          gdown 1Yv_8FM-qnOnLq2KIG2bGbMMbmkoM0R0v -O src.mp4
+          python - <<'PY'
+          import os,json,subprocess
+          d=float(subprocess.check_output(['ffprobe','-v','error','-show_entries','format=duration','-of','default=nw=1:nk=1','src.mp4']))
+          p=int(os.environ['PART']); start=d*p/4; end=d*(p+1)/4
+          json.dump({'duration':d,'part':p,'start':start,'end':end},open('out/metadata.json','w'))
+          subprocess.run(['ffmpeg','-y','-loglevel','error','-ss',str(start),'-i','src.mp4','-t',str(end-start),'-vn','-ar','16000','-ac','1','-c:a','pcm_s16le','part.wav'],check=True)
+          print('segment',p,start,end,flush=True)
+          PY
+      - name: Quick speech analysis
+        run: |
+          python - <<'PY'
+          from faster_whisper import WhisperModel
+          import json
+          meta=json.load(open('out/metadata.json'))
+          model=WhisperModel('tiny',device='cpu',compute_type='int8')
+          segments, info=model.transcribe('part.wav',language='id',beam_size=1,vad_filter=True,condition_on_previous_text=True)
+          with open('out/transcript.txt','w') as f:
+            for s in segments:
+              f.write(f'[{s.start+meta["start"]:08.2f}-{s.end+meta["start"]:08.2f}] {s.text.strip()}\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: t5-quick-${{ matrix.part }}
+          path: out/
+          retention-days: 2
