@@ -48,8 +48,8 @@ jobs:
           node-version: 22
       - name: Install tools
         run: |
-          command -v ffmpeg
-          fc-list | head -1 || true
+          sudo apt-get install -y ffmpeg fonts-dejavu-core
+          ffmpeg -version | head -1
       - uses: actions/download-artifact@v4
         with:
           name: timothy4-remotion-input
