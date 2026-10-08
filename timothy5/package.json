@@ -1,0 +1,11 @@
+{
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "remotion": "4.0.530",
+    "@remotion/cli": "4.0.530",
+    "@remotion/media": "4.0.530",
+    "react": "19.1.0",
+    "react-dom": "19.1.0"
+  }
+}
