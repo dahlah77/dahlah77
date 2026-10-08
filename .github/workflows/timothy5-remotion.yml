@@ -1,0 +1,114 @@
+name: Timothy 5 Native Remotion Render
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.timothy5-render/**'
+permissions:
+  contents: read
+  actions: read
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download inspected video
+        run: |
+          python -m pip install gdown
+          mkdir -p work
+          gdown 1Yv_8FM-qnOnLq2KIG2bGbMMbmkoM0R0v -O work/source.mp4
+          test $(stat -c %s work/source.mp4) -gt 300000000
+          ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 work/source.mp4
+      - name: Fetch inspected word-level transcript
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api /repos/${GITHUB_REPOSITORY}/actions/artifacts/11560256128/zip > work/analysis.zip
+          cd work
+          unzip -o analysis.zip transcript.json
+          test -s transcript.json
+          rm analysis.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: timothy5-input
+          path: |
+            work/source.mp4
+            work/transcript.json
+          compression-level: 0
+          retention-days: 2
+  render:
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        group: [0,1,2,3,4,5,6,7]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install system tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y ffmpeg fonts-dejavu-core
+      - uses: actions/download-artifact@v4
+        with:
+          name: timothy5-input
+          path: work
+      - name: Set up source and Remotion packages
+        run: |
+          mkdir -p timothy5/public timothy5/out
+          cp work/work/source.mp4 timothy5/public/source.mp4
+          cp work/work/transcript.json timothy5/transcript.json
+          cd timothy5
+          npm install --no-audit --no-fund
+          npx remotion browser ensure
+      - name: Render assigned clips in Remotion
+        env:
+          GROUP: ${{ matrix.group }}
+        run: |
+          python - <<'PY'
+          import json,os,subprocess
+          clips=json.load(open('timothy5/clips.json'))
+          n=8
+          groups=[[] for _ in range(n)]
+          totals=[0.0]*n
+          for c in sorted(clips,key=lambda c:-(c['end']-c['start'])):
+            j=min(range(n),key=lambda k:totals[k])
+            groups[j].append(c)
+            totals[j]+=c['end']-c['start']
+          selected=sorted(groups[int(os.environ['GROUP'])],key=lambda c:c['id'])
+          print("render group",os.environ['GROUP'],[(c['id'],round(c['end']-c['start'])) for c in selected],flush=True)
+          for c in selected:
+            out='timothy5/out/'+c['file']
+            subprocess.run([
+              'npx','remotion','render','timothy5/index.jsx',
+              'T5_'+str(c['id']).zfill(2),out,
+              '--codec=h264','--crf=20','--pixel-format=yuv420p','--concurrency=2'
+            ],check=True)
+          PY
+      - name: Validate playable MP4, portrait orientation, durations
+        env:
+          GROUP: ${{ matrix.group }}
+        run: |
+          python - <<'PY'
+          import glob,subprocess,json,os
+          paths=glob.glob('timothy5/out/*.mp4')
+          if not paths: raise SystemExit('No outputs')
+          for f in paths:
+            a=json.loads(subprocess.check_output(['ffprobe','-v','error','-show_entries','stream=width,height,r_frame_rate:format=duration','-of','json',f]))
+            st=a['streams'][0]
+            assert st['width']==720 and st['height']==1280,f
+            assert float(a['format']['duration'])>10,f
+            assert os.path.getsize(f)>300000,f
+            print(os.path.basename(f),a['format']['duration'],os.path.getsize(f),flush=True)
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: timothy5-final-group-${{ matrix.group }}
+          path: timothy5/out/*.mp4
+          compression-level: 0
+          retention-days: 2
